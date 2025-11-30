@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+.env
+.DS_Store
+inputs/*.txt
+inputs/*.in
+!inputs/.gitkeep

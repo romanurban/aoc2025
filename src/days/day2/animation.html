@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 2 Gift Shop CRT</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=DM+Mono:wght@400;500&display=swap');
+    :root {
+      --text: #e9f8ff;
+      --muted: #a9c5d0;
+      --accent: #f7c66c;
+      --accent-2: #65d8c2;
+      --panel: rgba(6, 14, 22, 0.76);
+      --glass: rgba(255, 255, 255, 0.06);
+      --mono: 'DM Mono', 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      --sans: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0c141d;
+      color: var(--text);
+      font-family: var(--sans);
+      padding: 20px;
+    }
+    .scene {
+      position: relative;
+      width: min(95vw, 760px);
+      aspect-ratio: 2 / 3;
+      background: url('./day2_bg.png') center/contain no-repeat;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.45);
+      overflow: hidden;
+    }
+    .screen-area {
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      top: calc(50% - 70px);
+      height: 38%;
+      background: #0b1620;
+      border-radius: 10px;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.4);
+      padding: 10px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+    }
+    .screen-area::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.08) 0px,
+        rgba(255,255,255,0.08) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .start-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0b1620;
+      z-index: 2;
+    }
+    .start-overlay.hidden { display: none; }
+    .start-overlay button {
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      background: linear-gradient(120deg, #65d8c2, #f7c66c);
+      color: #0b1220;
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .start-overlay button:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(0,0,0,0.38); }
+    .log {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: #baf0c8;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .line {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      animation: fadeIn 0.18s ease;
+    }
+    .label { color: var(--muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .number { font-weight: 700; letter-spacing: 0.02em; font-size: 16px; text-align: center; }
+    .hit {
+      background: linear-gradient(120deg, rgba(101,216,194,0.25), rgba(247,198,108,0.18));
+      border-color: rgba(101,216,194,0.65);
+      box-shadow: 0 0 18px rgba(101,216,194,0.2);
+      animation: flash 0.5s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes flash {
+      0% { filter: drop-shadow(0 0 6px rgba(101,216,194,0.6)); }
+      100% { filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      z-index: 1;
+      align-items: center;
+    }
+    .info strong { display: block; font-size: 14px; color: var(--accent); letter-spacing: 0.01em; }
+    .progress-wrap {
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      z-index: 1;
+    }
+    .progress {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(120deg, #65d8c2, #f7c66c);
+      transition: width 0.2s ease;
+    }
+    @media (max-width: 540px) {
+      .scene { width: 100vw; }
+      .screen-area { left: 10%; right: 10%; top: calc(50.5% - 70px); height: 38%; }
+      .info { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="screen-area">
+      <div class="start-overlay" id="startOverlay">
+        <button id="startBtn">Start scan</button>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="info">
+        <div><span>P1 sum</span><strong id="sumP1">0</strong></div>
+        <div><span>P2 sum</span><strong id="sumP2">0</strong></div>
+      </div>
+      <div class="progress-wrap"><div class="progress" id="progress"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const sampleInput = '11-22,95-115,998-1012,1188511880-1188511890,222220-222224,1698522-1698528,446443-446449,38593856-38593862,565653-565659,824824821-824824827,2121212118-2121212124';
+
+    const state = {
+      ranges: [],
+      invalidsP1: [],
+      invalidsP2: [],
+      setP1: new Set(),
+      setP2: new Set(),
+      patternsP2: new Map(),
+      cursor: 0, // over P2 list
+      sumP1: 0,
+      sumP2: 0,
+      countP1: 0,
+      running: false,
+      filler: 0,
+      nextFrame: 0,
+      speed: 420,
+      prepared: false,
+      flashUntil: 0,
+    };
+
+    const els = {
+      log: document.getElementById('log'),
+      sumP1: document.getElementById('sumP1'),
+      sumP2: document.getElementById('sumP2'),
+      progress: document.getElementById('progress'),
+      startOverlay: document.getElementById('startOverlay'),
+      startBtn: document.getElementById('startBtn'),
+    };
+
+    function fmt(num) { return String(num); }
+
+    function parseRanges(text) {
+      const pieces = text.replace(/\\r\\n?/g, '\\n').split(',').map(p => p.trim()).filter(Boolean);
+      if (!pieces.length) throw new Error('No ranges provided.');
+      return pieces.map(piece => {
+        const [a, b] = piece.split('-').map(s => s.trim());
+        const start = Number(a);
+        const end = Number(b);
+        if (Number.isNaN(start) || Number.isNaN(end) || start > end) throw new Error(`Invalid range: ${piece}`);
+        return { start, end };
+      });
+    }
+
+    function pow10(exp) { let r = 1n; for (let i = 0; i < exp; i++) r *= 10n; return r; }
+
+    function computeInvalids(ranges, mode) {
+      const set = new Set();
+      const patterns = new Map();
+      for (const { start, end } of ranges) {
+        const minDigits = String(start).length;
+        const maxDigits = String(end).length;
+        for (let k = 1; k <= maxDigits; k++) {
+          const repeatMax = mode === 'part1' ? 2 : Math.floor(maxDigits / k);
+          for (let r = 2; r <= repeatMax; r++) {
+            if (mode === 'part1' && r !== 2) continue;
+            const totalDigits = k * r;
+            if (totalDigits < minDigits) continue;
+            const powK = pow10(k);
+            const factor = Number((pow10(totalDigits) - 1n) / (powK - 1n));
+            const rawMin = Math.ceil(start / factor);
+            const rawMax = Math.floor(end / factor);
+            const lower = Math.max(rawMin, Math.pow(10, k - 1));
+            const upper = Math.min(rawMax, Math.pow(10, k) - 1);
+            for (let x = lower; x <= upper; x++) {
+              const candidate = Number(String(x).repeat(r));
+              if (candidate >= start && candidate <= end) {
+                set.add(candidate);
+                if (!patterns.has(candidate)) {
+                  const chunk = String(x);
+                  const formatted = Array.from({ length: r }, () => chunk).join(' ');
+                  patterns.set(candidate, formatted);
+                }
+              }
+            }
+          }
+        }
+      }
+      return { list: Array.from(set).sort((a, b) => a - b), patterns };
+    }
+
+    function pickNoise() {
+      if (!state.ranges.length) return Math.floor(Math.random() * 1000);
+      for (let i = 0; i < 6; i++) {
+        const range = state.ranges[Math.floor(Math.random() * state.ranges.length)];
+        const roll = Math.floor(Math.random() * (range.end - range.start + 1)) + range.start;
+        if (!state.setP2.has(roll)) return roll;
+      }
+      return state.invalidsP2[state.cursor] || state.invalidsP2[state.invalidsP2.length - 1] || 0;
+    }
+
+    function addLine(value, hit) {
+      const numeric = typeof value === 'number';
+      const shown = numeric ? fmt(value) : value;
+      const line = document.createElement('div');
+      line.className = `line${hit ? ' hit' : ''}`;
+      const matchText = hit && state.patternsP2.has(value) ? state.patternsP2.get(value) : null;
+      line.innerHTML = `
+        <span class="label">${hit ? 'MATCH' : (numeric ? 'SCAN' : 'NOTE')}</span>
+        <span class="number">${matchText || shown}</span>
+      `;
+      els.log.appendChild(line);
+      while (els.log.children.length > 10) {
+        els.log.removeChild(els.log.firstChild);
+      }
+    }
+
+    function updateStats() {
+      els.sumP1.textContent = fmt(state.sumP1);
+      els.sumP2.textContent = fmt(state.sumP2);
+      const pct = state.invalidsP2.length ? (state.cursor / state.invalidsP2.length) * 100 : 0;
+      els.progress.style.width = `${Math.min(100, pct)}%`;
+      if (state.flashUntil && performance.now() < state.flashUntil) {
+        els.log.style.boxShadow = '0 0 18px rgba(101,216,194,0.35)';
+      } else {
+        els.log.style.boxShadow = 'none';
+      }
+    }
+
+    function tick(now) {
+      if (!state.running) return;
+      if (now < state.nextFrame) {
+        requestAnimationFrame(tick);
+        return;
+      }
+      state.nextFrame = now + state.speed;
+      const hit = state.cursor < state.invalidsP2.length && state.filler === 0;
+      let value;
+      if (hit) {
+        value = state.invalidsP2[state.cursor];
+        state.sumP2 += value;
+        if (state.setP1.has(value)) {
+          state.sumP1 += value;
+          state.countP1 += 1;
+        }
+        state.cursor += 1;
+        state.filler = Math.floor(Math.random() * 4) + 2;
+        state.flashUntil = now + 280;
+      } else {
+        value = pickNoise();
+        state.filler = Math.max(0, state.filler - 1);
+      }
+      addLine(value, hit);
+      if (state.cursor >= state.invalidsP2.length && state.filler === 0) {
+        state.running = false;
+        // stay on final frame; overlay remains hidden
+      }
+      updateStats();
+      if (state.running) requestAnimationFrame(tick);
+    }
+
+    function startScan() {
+      if (!state.prepared) {
+        state.ranges = parseRanges(sampleInput);
+        state.prepared = true;
+      }
+      const res1 = computeInvalids(state.ranges, 'part1');
+      const res2 = computeInvalids(state.ranges, 'part2');
+      state.invalidsP1 = res1.list;
+      state.invalidsP2 = res2.list;
+      state.setP1 = new Set(state.invalidsP1);
+      state.setP2 = new Set(state.invalidsP2);
+      state.patternsP2 = res2.patterns;
+      state.cursor = 0;
+      state.sumP1 = 0;
+      state.sumP2 = 0;
+      state.countP1 = 0;
+      state.filler = 0;
+      state.speed = 140;
+      state.running = true;
+      state.nextFrame = performance.now();
+      addLine(`=== scanning both parts (${state.invalidsP2.length} targets) ===`, false);
+      updateStats();
+      requestAnimationFrame(tick);
+    }
+
+    (() => {
+      addLine('Awaiting start command.', false);
+      els.startBtn.addEventListener('click', () => {
+        els.startOverlay.classList.add('hidden');
+        startScan();
+      });
+    })();
+  </script>
+</body>
+</html>

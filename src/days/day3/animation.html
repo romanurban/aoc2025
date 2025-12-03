@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 3 Battery Banks</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=DM+Mono:wght@400;500&display=swap');
+    :root {
+      --panel: rgba(10, 20, 18, 0.8);
+      --panel-2: rgba(28, 44, 39, 0.9);
+      --card: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.14);
+      --text: #f3eddc;
+      --muted: #b6c8b9;
+      --accent: #f5c46b;
+      --accent-2: #70e0c3;
+      --shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+      --mono: 'DM Mono', 'JetBrains Mono', monospace;
+      --sans: 'Bricolage Grotesque', 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 20% 20%, #0f1b16 0%, #0b120f 45%, #070c0a 100%);
+      color: var(--text);
+      font-family: var(--sans);
+      padding: 22px;
+    }
+    .scene {
+      position: relative;
+      width: min(96vw, 1180px);
+      aspect-ratio: 3 / 2;
+      background: url('./day3_bg.png') center/contain no-repeat;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .panel {
+      position: absolute;
+      top: 23.5%;
+      left: calc(36% + 228px);
+      width: calc(49% - 240px);
+      min-width: 260px;
+      height: calc(62% - 96px);
+      background: linear-gradient(160deg, var(--panel) 0%, rgba(12, 26, 22, 0.85) 60%, rgba(10, 18, 16, 0.92) 100%);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 20px 40px rgba(0,0,0,0.5);
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+    }
+    .panel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.05), transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(255,255,255,0.05), transparent 45%);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .panel-header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .eyebrow {
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .title {
+      margin: 2px 0 0;
+      font-size: 20px;
+      letter-spacing: -0.01em;
+    }
+    .status {
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      min-width: 120px;
+      text-align: center;
+    }
+    .matrix {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .bank {
+      position: relative;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 6px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 6px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .bank::before {
+      content: '';
+      position: absolute;
+      inset: -20%;
+      background: radial-gradient(circle at 60% 60%, rgba(112,224,195,0.08), transparent 45%);
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+    .bank.active::before { opacity: 1; }
+    .bank.locked {
+      border-color: rgba(245,196,107,0.65);
+      box-shadow: inset 0 0 12px rgba(245,196,107,0.25), 0 10px 20px rgba(0,0,0,0.35);
+    }
+    .bank-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .bank-head strong {
+      color: var(--text);
+      letter-spacing: 0.01em;
+    }
+    .bank-head .max {
+      font-family: var(--mono);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 4px 8px;
+      border-radius: 8px;
+      color: var(--accent-2);
+      min-width: 86px;
+      text-align: right;
+    }
+    .cells {
+      display: grid;
+      grid-auto-rows: 1fr;
+      gap: 4px;
+    }
+    .cell {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+      display: grid;
+      place-items: center;
+      font-family: var(--mono);
+      font-weight: 600;
+      color: #d2d8cd;
+      font-size: clamp(10px, 1.6vw, 16px);
+      overflow: hidden;
+      transition: transform 0.16s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+    .cell::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+      opacity: 0;
+      transform: translateX(-20%);
+    }
+    .cell.scanning {
+      border-color: rgba(112,224,195,0.65);
+      background: rgba(112,224,195,0.07);
+      box-shadow: 0 0 12px rgba(112,224,195,0.25);
+    }
+    .cell.scanning::after {
+      opacity: 1;
+      animation: sweep 0.35s ease;
+    }
+    @keyframes sweep {
+      from { transform: translateX(-60%); }
+      to { transform: translateX(80%); }
+    }
+    .cell.selected {
+      color: #0c140f;
+      background: linear-gradient(135deg, #f5c46b, #ffe0a6);
+      border-color: rgba(245,196,107,0.9);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.35), inset 0 0 8px rgba(255,255,255,0.4);
+      transform: translateY(-2px);
+    }
+    .cell.locked {
+      background: linear-gradient(135deg, rgba(245,196,107,0.75), rgba(112,224,195,0.7));
+      color: #0b0f0d;
+      border-color: rgba(245,196,107,0.8);
+    }
+    .footer {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+    .stat {
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      display: grid;
+      gap: 4px;
+    }
+    .stat .label {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+    .stat strong {
+      font-family: var(--mono);
+      font-size: 15px;
+      letter-spacing: 0.03em;
+    }
+    .bar {
+      grid-column: span 3;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(120deg, #70e0c3, #f5c46b);
+      transition: width 0.3s ease;
+      box-shadow: 0 0 16px rgba(112,224,195,0.55);
+    }
+    .start-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(9, 12, 10, 0.8);
+      backdrop-filter: blur(3px);
+      z-index: 3;
+    }
+    .start-overlay.hidden { display: none; }
+    .start-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 14px 16px;
+      border-radius: 14px;
+      text-align: center;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+      max-width: 320px;
+    }
+    .start-card p {
+      margin: 10px 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      color: #0b120f;
+      background: linear-gradient(120deg, #70e0c3, #f5c46b);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
+    button:active { transform: translateY(0); box-shadow: 0 10px 22px rgba(0,0,0,0.3); }
+    .ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: none;
+    }
+    @media (max-width: 860px) {
+      .scene { width: 100vw; }
+      .panel { top: 18%; left: calc(35% + 250px); width: calc(50% - 240px); min-width: 240px; height: calc(63% - 40px); }
+      .title { font-size: 18px; }
+      .footer { grid-template-columns: repeat(2, 1fr); }
+      .bar { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      body { padding: 10px; }
+      .panel { top: 20%; left: calc(33% + 250px); width: calc(52% - 240px); min-width: 220px; height: calc(60% - 40px); }
+      .matrix { gap: 6px; }
+      .bank-head { font-size: 11px; }
+      .status { padding: 6px 8px; font-size: 11px; }
+      .cell { border-radius: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="panel" aria-label="Battery bank overlay">
+      <div class="panel-header">
+        <div>
+          <div class="eyebrow">Lobby · Day 3</div>
+          <div class="title">Emergency Battery Banks</div>
+        </div>
+        <div class="status" id="status">Idle</div>
+      </div>
+
+      <div class="matrix" id="matrix"></div>
+
+      <div class="footer">
+        <div class="stat">
+          <span class="label">Active bank</span>
+          <strong id="activeBank">—</strong>
+        </div>
+        <div class="stat">
+          <span class="label">Highest joltage</span>
+          <strong id="bankValue">--</strong>
+        </div>
+        <div class="stat">
+          <span class="label">Escalator charge</span>
+          <strong id="totalValue">0</strong>
+        </div>
+        <div class="bar"><div class="bar-fill" id="chargeFill"></div></div>
+      </div>
+
+      <div class="start-overlay" id="startOverlay">
+        <div class="start-card">
+          <h3 style="margin: 0; letter-spacing: -0.01em;">Wake the panel</h3>
+          <p>Each bank hides two batteries that make the biggest joltage in order. Scan, pick, and route them to power the escalator.</p>
+          <button id="startBtn">Start calibration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const banks = [
+      { label: 'Bank 1', digits: '987654321111111' },
+      { label: 'Bank 2', digits: '811111111111119' },
+      { label: 'Bank 3', digits: '234234234234278' },
+      { label: 'Bank 4', digits: '818181911112111' },
+    ];
+
+    const state = {
+      total: 0,
+      running: false,
+      views: [],
+      prefersSlow: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    };
+
+    const els = {
+      matrix: document.getElementById('matrix'),
+      status: document.getElementById('status'),
+      activeBank: document.getElementById('activeBank'),
+      bankValue: document.getElementById('bankValue'),
+      totalValue: document.getElementById('totalValue'),
+      chargeFill: document.getElementById('chargeFill'),
+      startOverlay: document.getElementById('startOverlay'),
+      startBtn: document.getElementById('startBtn'),
+    };
+
+    function computeBestPair(digitStr) {
+      const digits = digitStr.split('').map(Number);
+      let best = { value: -1, first: 0, second: 1 };
+      for (let i = 0; i < digits.length - 1; i++) {
+        for (let j = i + 1; j < digits.length; j++) {
+          const value = digits[i] * 10 + digits[j];
+          if (value > best.value) {
+            best = { value, first: i, second: j };
+          }
+        }
+      }
+      return { digits, ...best };
+    }
+
+    function createView(bank) {
+      const wrap = document.createElement('div');
+      wrap.className = 'bank';
+
+      const head = document.createElement('div');
+      head.className = 'bank-head';
+      head.innerHTML = `<strong>${bank.label}</strong><span class="max">--</span>`;
+
+      const cells = document.createElement('div');
+      cells.className = 'cells';
+      cells.style.gridTemplateColumns = `repeat(${bank.digits.length}, 1fr)`;
+
+      const cellNodes = bank.digits.map((digit, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.textContent = digit;
+        cell.dataset.index = String(idx);
+        cells.appendChild(cell);
+        return cell;
+      });
+
+      wrap.appendChild(head);
+      wrap.appendChild(cells);
+      els.matrix.appendChild(wrap);
+
+      return { wrap, head, maxEl: head.querySelector('.max'), cellNodes };
+    }
+
+    function resetPanel() {
+      state.total = 0;
+      els.activeBank.textContent = '—';
+      els.bankValue.textContent = '--';
+      els.totalValue.textContent = '0';
+      els.chargeFill.style.width = '0%';
+      els.status.textContent = 'Idle';
+      state.views.forEach(view => {
+        view.wrap.classList.remove('active', 'locked');
+        view.maxEl.textContent = '--';
+        view.cellNodes.forEach(node => {
+          node.classList.remove('scanning', 'selected', 'locked');
+        });
+      });
+    }
+
+    function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    async function animateBank(bank, view, idx) {
+      els.status.textContent = `Scanning ${bank.label}`;
+      els.activeBank.textContent = bank.label;
+      view.wrap.classList.add('active');
+      const speed = state.prefersSlow ? 120 : 70;
+
+      for (let i = 0; i < bank.digits.length; i++) {
+        const node = view.cellNodes[i];
+        node.classList.add('scanning');
+        await wait(speed + Math.random() * 30);
+        node.classList.remove('scanning');
+      }
+
+      await wait(speed * 1.6);
+      const first = view.cellNodes[bank.first];
+      const second = view.cellNodes[bank.second];
+      first.classList.add('selected');
+      await wait(speed * 1.2);
+      second.classList.add('selected');
+      await wait(speed * 0.8);
+
+      first.classList.add('locked');
+      second.classList.add('locked');
+      view.wrap.classList.remove('active');
+      view.wrap.classList.add('locked');
+      view.maxEl.textContent = `${bank.value} jolts`;
+
+      state.total += bank.value;
+      els.bankValue.textContent = `${bank.value}`;
+      els.totalValue.textContent = `${state.total}`;
+      const pct = Math.min(100, (state.total / (banks.length * 99)) * 100);
+      els.chargeFill.style.width = `${pct}%`;
+
+      if (idx === banks.length - 1) {
+        els.status.textContent = 'Escalator primed';
+      } else {
+        els.status.textContent = 'Routing to next bank';
+      }
+      await wait(speed * 2);
+    }
+
+    async function runSequence() {
+      if (state.running) return;
+      state.running = true;
+      resetPanel();
+      els.startOverlay.classList.add('hidden');
+      await wait(80);
+
+      for (let i = 0; i < banks.length; i++) {
+        const bank = banks[i];
+        const view = state.views[i];
+        await animateBank(bank, view, i);
+      }
+      state.running = false;
+    }
+
+    function init() {
+      banks.forEach(bank => {
+        Object.assign(bank, computeBestPair(bank.digits));
+        const view = createView(bank);
+        state.views.push(view);
+      });
+      els.startBtn.addEventListener('click', runSequence);
+      els.status.textContent = 'Panel ready';
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -6,3 +6,6 @@ coverage
 inputs/*.txt
 inputs/*.in
 !inputs/.gitkeep
+web/bg_main.png
+.gitignore
+web/index.html

@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: "pages"
@@ -42,8 +44,11 @@ jobs:
             rsync -av "$dir"/ "$dest"/
           done
 
-          # Remove non-static/code files from public
-          find public -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.mjs' -o -name '*.js.map' -o -name '*.map' -o -name '*.md' -o -name '*.txt' -o -name '*.json' \) -delete
+          # Remove non-static/code files from public (keep assets like images/css/js/json)
+          find public -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.map' -o -name '*.md' -o -name '*.txt' \) -delete
+
+          # Prevent Jekyll processing
+          touch public/.nojekyll
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
@@ -51,3 +56,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
           publish_branch: gh-pages
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'

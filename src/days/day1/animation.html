@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 1 Dial Visualizer</title>
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #0f172a 0%, #0b3f52 60%, #115e59 100%);
+      --card: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.15);
+      --text: #e5f7ff;
+      --muted: #9cc6d6;
+      --accent: #f4d35e;
+      --accent-2: #35c1d9;
+      --danger: #ff7b72;
+      --shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+      --font: "Avenir Next", "Segoe UI", "SF Pro Display", "Inter", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 18px;
+    }
+    .shell {
+      width: min(1100px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+    textarea, input[type="number"] {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: var(--font);
+      transition: border 0.2s ease, background 0.2s ease;
+    }
+    textarea:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent-2);
+      background: rgba(255, 255, 255, 0.1);
+    }
+    textarea { min-height: 160px; resize: vertical; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+    }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      color: #0b172a;
+      background: linear-gradient(120deg, var(--accent), #ffd166);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35); }
+    button:active { transform: translateY(0); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25); }
+    .secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    .status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      min-height: 20px;
+    }
+    .dial-wrap {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 10px;
+    }
+    canvas {
+      width: 100%;
+      max-width: 460px;
+      aspect-ratio: 1;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 70%, transparent 72%);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .stat {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+    .stat .label { color: var(--muted); font-size: 13px; }
+    .stat .value { font-size: 18px; color: var(--accent); }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <h1>Day 1 Dial Visualizer</h1>
+    <p class="subtitle">Animate the combination dial instructions from your Day 1 input. Paste input, pick a speed, and watch the dial wrap around.</p>
+
+    <div class="layout">
+      <div class="card">
+        <h2>Input</h2>
+        <label for="input">Moves (R/L followed by number, one per line)</label>
+        <textarea id="input" placeholder="R10&#10;L3&#10;R5"></textarea>
+        <div class="controls">
+          <div style="flex:1; min-width: 160px;">
+            <label for="speed">Frame delay (ms)</label>
+            <input type="number" id="speed" value="24" min="0" step="1" />
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="start">Start animation</button>
+            <button id="stop" class="secondary">Stop</button>
+          </div>
+        </div>
+        <div class="status" id="status">Waiting for input…</div>
+      </div>
+
+      <div class="card">
+        <h2>Dial</h2>
+        <div class="dial-wrap">
+          <canvas id="dialCanvas" width="600" height="600"></canvas>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="label">Position</span><span class="value" id="posValue">50</span></div>
+          <div class="stat"><span class="label">Part 1 clicks (stop at 0)</span><span class="value" id="p1Value">0</span></div>
+          <div class="stat"><span class="label">Part 2 clicks (pass 0)</span><span class="value" id="p2Value">0</span></div>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="tag">Dial range: 0-99</span>
+          <span class="tag">Start at 50</span>
+          <span class="tag">Instructions: Day 1 style</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dialRange = 100;
+    const startPosition = 50;
+    const state = {
+      instructions: [],
+      position: startPosition,
+      clicksP1: 0,
+      clicksP2: 0,
+      frameDelay: 12,
+      running: false,
+      nextFrameAt: 0,
+      stepCursor: { inst: 0, step: 0 },
+      flashUntil: 0,
+    };
+
+    const els = {
+      input: document.getElementById('input'),
+      speed: document.getElementById('speed'),
+      start: document.getElementById('start'),
+      stop: document.getElementById('stop'),
+      status: document.getElementById('status'),
+      posValue: document.getElementById('posValue'),
+      p1Value: document.getElementById('p1Value'),
+      p2Value: document.getElementById('p2Value'),
+      canvas: document.getElementById('dialCanvas'),
+    };
+    const ctx = els.canvas.getContext('2d');
+
+    function normalizeLineEndings(text) {
+      return text.replace(/\\r\\n?/g, '\\n');
+    }
+
+    function parseInput(raw) {
+      const lines = normalizeLineEndings(raw)
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean);
+      if (!lines.length) throw new Error('No instructions provided.');
+      return lines.map(line => {
+        const dir = line[0];
+        const dist = Number.parseInt(line.slice(1), 10);
+        if ((dir !== 'R' && dir !== 'L') || Number.isNaN(dist)) {
+          throw new Error(`Invalid instruction: "${line}"`);
+        }
+        return { direction: dir, distance: dist };
+      });
+    }
+
+    function resetState(instructions) {
+      state.instructions = instructions;
+      state.position = startPosition;
+      state.clicksP1 = 0;
+      state.clicksP2 = 0;
+      state.stepCursor = { inst: 0, step: 0 };
+      updateStats();
+      drawDial();
+    }
+
+    function updateStats() {
+      els.posValue.textContent = state.position.toString();
+      els.p1Value.textContent = state.clicksP1.toString();
+      els.p2Value.textContent = state.clicksP2.toString();
+    }
+
+    function advance(direction) {
+      if (direction === 'R') {
+        state.position = state.position + 1 >= dialRange ? 0 : state.position + 1;
+      } else {
+        state.position = state.position - 1 < 0 ? dialRange - 1 : state.position - 1;
+      }
+    }
+
+    function stepFrame() {
+      const { inst, step } = state.stepCursor;
+      if (inst >= state.instructions.length) {
+        els.status.textContent = 'Finished.';
+        stopAnimation();
+        return;
+      }
+
+      const current = state.instructions[inst];
+      advance(current.direction);
+      if (state.position === 0) {
+        state.clicksP2 += 1; // part 2 counts passes
+        if (step === current.distance - 1) {
+          state.clicksP1 += 1; // part 1 counts only at end of instruction
+        }
+        state.flashUntil = performance.now() + 400; // flash for ~0.4s
+      }
+
+      state.stepCursor.step += 1;
+      if (state.stepCursor.step >= current.distance) {
+        state.stepCursor.inst += 1;
+        state.stepCursor.step = 0;
+      }
+
+      updateStats();
+      drawDial(current.direction);
+    }
+
+    function startAnimation() {
+      stopAnimation();
+      try {
+        const instr = parseInput(els.input.value);
+        resetState(instr);
+        state.frameDelay = Math.max(0, Number.parseInt(els.speed.value, 10) || 0);
+      } catch (err) {
+        els.status.textContent = err.message;
+        return;
+      }
+      state.running = true;
+      state.nextFrameAt = performance.now();
+      els.status.textContent = 'Animating…';
+
+      const tick = (now) => {
+        if (!state.running) return;
+        // Catch up if frames are slow
+        while (state.running && now >= state.nextFrameAt) {
+          stepFrame();
+          state.nextFrameAt += state.frameDelay || 16; // default to ~60fps if zero
+        }
+        if (state.running) requestAnimationFrame(tick);
+      };
+
+      requestAnimationFrame(tick);
+    }
+
+    function stopAnimation() {
+      state.running = false;
+    }
+
+    function drawDial(directionHint = null) {
+      const scale = window.devicePixelRatio || 1;
+      const size = els.canvas.width / scale;
+      const center = size / 2;
+      ctx.clearRect(0, 0, els.canvas.width, els.canvas.height);
+
+      const baseRadius = size * 0.42;
+      const tickRadius = size * 0.36;
+      const pointerRadius = size * 0.30;
+
+      const flashActive = performance.now() < state.flashUntil;
+
+      // Outer ring
+      const grad = ctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0, 'rgba(255,255,255,0.08)');
+      grad.addColorStop(1, 'rgba(255,255,255,0.18)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = size * 0.025;
+      ctx.beginPath();
+      ctx.arc(center, center, baseRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Ticks (every 5)
+      ctx.save();
+      ctx.translate(center, center);
+      for (let i = 0; i < dialRange; i++) {
+        const angle = (Math.PI * 2 * (i / dialRange)) - Math.PI / 2;
+        const inner = tickRadius - (i % 10 === 0 ? 12 : 6);
+        const outer = tickRadius + 2;
+        ctx.strokeStyle = i === 0 ? '#f87171' : 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = i % 10 === 0 ? 3 : 1;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+        ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Click pulse
+      if (flashActive) {
+        ctx.save();
+        ctx.translate(center, center);
+        const pulseRadius = baseRadius * 0.7;
+        const pulseGrad = ctx.createRadialGradient(0, 0, pulseRadius * 0.25, 0, 0, pulseRadius);
+        pulseGrad.addColorStop(0, 'rgba(16, 185, 129, 0.45)');
+        pulseGrad.addColorStop(0.5, 'rgba(16, 185, 129, 0.25)');
+        pulseGrad.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        ctx.fillStyle = pulseGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Pointer
+      const pointerAngle = (Math.PI * 2 * (state.position / dialRange)) - Math.PI / 2;
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(pointerAngle);
+      const pointerLength = baseRadius - 14;
+      ctx.fillStyle = flashActive ? '#34d399' : '#f4d35e';
+      ctx.beginPath();
+      ctx.moveTo(-6, 12);
+      ctx.lineTo(pointerLength, 0);
+      ctx.lineTo(-6, -12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Center badge
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = flashActive ? '#34d399' : '#35c1d9';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(center, center, pointerRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Labels
+      ctx.fillStyle = '#e5f7ff';
+      ctx.font = `${size * 0.045}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`pos ${state.position.toString().padStart(2, '0')}`, center, center - 6);
+      ctx.fillStyle = '#9cc6d6';
+      ctx.font = `${size * 0.032}px ${getComputedStyle(document.body).fontFamily}`;
+      const dirLabel = directionHint ? `last move: ${directionHint}` : 'ready';
+      ctx.fillText(dirLabel, center, center + 16);
+
+      if (flashActive) {
+        ctx.save();
+        ctx.translate(center, center);
+        const fontStack = getComputedStyle(document.body).fontFamily;
+        const yOffset = -size * 0.083; // raise text ~50px on a 600px canvas
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = `bold ${size * 0.056}px ${fontStack}`;
+        // Outer glow layer
+        ctx.shadowColor = 'rgba(52, 211, 153, 0.8)';
+        ctx.shadowBlur = size * 0.04;
+        ctx.fillText('CLICK', 0, yOffset);
+        // Solid text layer
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#34d399';
+        ctx.font = `900 ${size * 0.06}px ${fontStack}`;
+        ctx.fillText('CLICK', 0, yOffset);
+        ctx.restore();
+      }
+    }
+
+    els.start.addEventListener('click', startAnimation);
+    els.stop.addEventListener('click', stopAnimation);
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      drawDial();
+    });
+
+    // Initial canvas sizing and placeholder input
+    (() => {
+      resizeCanvas();
+      els.input.value = `L68
+L30
+R48
+L5
+R60
+L55
+L1
+L99
+R14
+L82`;
+      drawDial();
+    })();
+
+    function resizeCanvas() {
+      const scale = window.devicePixelRatio || 1;
+      const width = els.canvas.clientWidth;
+      const height = els.canvas.clientWidth;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      els.canvas.width = width * scale;
+      els.canvas.height = height * scale;
+      ctx.scale(scale, scale);
+    }
+  </script>
+</body>
+</html>

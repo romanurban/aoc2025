@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 4: Printing Department - Part 2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #e8e8e8;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+
+        .warehouse {
+            position: relative;
+            background: linear-gradient(180deg, #2d2d44 0%, #1a1a2e 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .warehouse::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(255, 255, 255, 0.02) 40px,
+                    rgba(255, 255, 255, 0.02) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(255, 255, 255, 0.02) 40px,
+                    rgba(255, 255, 255, 0.02) 41px
+                );
+            pointer-events: none;
+        }
+
+        /* Wall breakthrough animation */
+        .wall-section {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 230px;
+            background: repeating-linear-gradient(
+                0deg,
+                #8b4513,
+                #8b4513 10px,
+                #654321 10px,
+                #654321 20px
+            );
+            border-radius: 5px;
+            z-index: 50;
+            transition: all 0.5s ease;
+            box-shadow: inset -5px 0 10px rgba(0,0,0,0.3);
+        }
+
+        .wall-section.breaking {
+            animation: wall-break 1s forwards;
+        }
+
+        @keyframes wall-break {
+            0% { transform: translateY(-50%) rotate(0deg); opacity: 1; }
+            50% { transform: translateY(-50%) rotate(5deg); }
+            100% { transform: translateY(-50%) translateX(50px) rotate(15deg); opacity: 0; }
+        }
+
+        .wall-label {
+            position: absolute;
+            right: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+            z-index: 51;
+        }
+
+        .cafeteria-sign {
+            position: absolute;
+            right: -100px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            border-radius: 10px;
+            font-weight: bold;
+            color: white;
+            opacity: 0;
+            transition: all 0.5s ease;
+            z-index: 52;
+        }
+
+        .cafeteria-sign.visible {
+            right: 10px;
+            opacity: 1;
+        }
+
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .grid-row {
+            display: flex;
+            gap: 2px;
+        }
+
+        .cell {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .cell-empty {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .cell-roll {
+            background: radial-gradient(circle at 30% 30%, #8b7355, #5d4e37);
+            border-radius: 50%;
+            box-shadow: 
+                inset -3px -3px 6px rgba(0, 0, 0, 0.3),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+                0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .cell-roll::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle at 30% 30%, #3a3a3a, #1a1a1a);
+            border-radius: 50%;
+            box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.1);
+        }
+
+        .cell-roll::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(139, 115, 85, 0.5);
+            border-radius: 50%;
+        }
+
+        .cell-scanning {
+            animation: scan-pulse 0.5s ease-out;
+        }
+
+        @keyframes scan-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+            }
+            100% {
+                box-shadow: 0 0 0 15px rgba(102, 126, 234, 0);
+            }
+        }
+
+        .cell-accessible {
+            background: radial-gradient(circle at 30% 30%, #6bcb77, #3d8b47) !important;
+            animation: accessible-glow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes accessible-glow {
+            from {
+                box-shadow: 
+                    inset -3px -3px 6px rgba(0, 0, 0, 0.3),
+                    inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+                    0 0 10px rgba(107, 203, 119, 0.5);
+            }
+            to {
+                box-shadow: 
+                    inset -3px -3px 6px rgba(0, 0, 0, 0.3),
+                    inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+                    0 0 20px rgba(107, 203, 119, 0.8);
+            }
+        }
+
+        .cell-removing {
+            animation: remove-roll 0.5s ease-out forwards;
+        }
+
+        @keyframes remove-roll {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        .cell-checking {
+            outline: 3px solid #ffd93d;
+            outline-offset: 2px;
+            z-index: 10;
+        }
+
+        .cell-neighbor-check {
+            outline: 2px dashed rgba(255, 217, 61, 0.5);
+            outline-offset: 1px;
+        }
+
+        .forklift {
+            position: absolute;
+            width: 40px;
+            height: 50px;
+            transition: all 0.3s ease;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .printer {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 140px;
+            height: auto;
+            pointer-events: none;
+            z-index: 10;
+            filter: drop-shadow(0 8px 18px rgba(0,0,0,0.35));
+        }
+
+        .elves {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .elf {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            image-rendering: auto;
+            filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
+            transition: transform 0.5s ease;
+        }
+
+        .forklift-body {
+            position: absolute;
+            width: 30px;
+            height: 40px;
+            background: linear-gradient(135deg, #ffd93d 0%, #f4a523 100%);
+            border-radius: 5px;
+            left: 5px;
+            top: 5px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .forklift-forks {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 8px;
+            background: #666;
+            border-radius: 2px;
+        }
+
+        .forklift-forks::before,
+        .forklift-forks::after {
+            content: '';
+            position: absolute;
+            width: 3px;
+            height: 15px;
+            background: #555;
+            bottom: 0;
+        }
+
+        .forklift-forks::before {
+            left: 5px;
+        }
+
+        .forklift-forks::after {
+            right: 5px;
+        }
+
+        .forklift-light {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background: #6bcb77;
+            border-radius: 50%;
+            animation: blink 0.3s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .forklift.carrying .forklift-light {
+            background: #ff6b6b;
+        }
+
+        .forklift.carrying::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: radial-gradient(circle at 30% 30%, #8b7355, #5d4e37);
+            border-radius: 50%;
+            bottom: 12px;
+            left: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.7rem;
+            color: #a0a0a0;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .stat-card .value.removed {
+            color: #6bcb77;
+        }
+
+        .stat-card .value.remaining {
+            color: #ffd93d;
+        }
+
+        .stat-card .value.wave {
+            color: #667eea;
+        }
+
+        .stat-card .value.wave-count {
+            color: #ff6b6b;
+        }
+
+        .input-area {
+            margin-bottom: 20px;
+        }
+
+        .input-area textarea {
+            width: 100%;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            color: #e8e8e8;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .input-area textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .snowflakes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .snowflake {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 1rem;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-10vh) rotate(0deg);
+            }
+            100% {
+                transform: translateY(110vh) rotate(360deg);
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="snowflakes" id="snowflakes"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎄 Day 4: Printing Department 🎄</h1>
+            <p>Part 2: Remove all accessible rolls wave by wave until the path is clear!</p>
+        </div>
+
+        <input type="hidden" id="puzzleInput" value="..@@.@@@@.
+@@@.@.@.@@
+@@@@@.@.@@
+@.@@@@..@.
+@@.@@@@.@@
+.@@@@@@@.@
+.@.@.@.@@@
+@.@@@.@@@@
+.@@@@@@@@.
+@.@.@@@.@.">
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Initial Rolls</h3>
+                <div class="value remaining" id="initialRolls">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Remaining</h3>
+                <div class="value remaining" id="remainingRolls">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Removed</h3>
+                <div class="value removed" id="totalRemoved">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>This Wave</h3>
+                <div class="value wave-count" id="waveRemoved">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Waves Complete</h3>
+                <div class="value wave" id="wavesComplete">0</div>
+            </div>
+        </div>
+
+        <div class="warehouse" id="warehouse">
+            <img src="./printer.png" class="printer" alt="Printing station">
+            <div class="elves" id="elves" aria-hidden="true"></div>
+            <div class="wall-section" id="wall"></div>
+            <div class="wall-label">← WALL →</div>
+            <div class="cafeteria-sign" id="cafeteriaSign">🍽️ CAFETERIA ➡️</div>
+            <div class="grid-container" id="grid"></div>
+            <div class="forklift" id="forklift" style="display: none;">
+                <div class="forklift-light"></div>
+                <div class="forklift-body"></div>
+                <div class="forklift-forks"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Create snowflakes
+        function createSnowflakes() {
+            const container = document.getElementById('snowflakes');
+            const snowflakeChars = ['❄', '❅', '❆', '✧', '✦'];
+            
+            for (let i = 0; i < 30; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                snowflake.textContent = snowflakeChars[Math.floor(Math.random() * snowflakeChars.length)];
+                snowflake.style.left = Math.random() * 100 + 'vw';
+                snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                snowflake.style.animationDelay = Math.random() * 5 + 's';
+                snowflake.style.opacity = Math.random() * 0.5 + 0.2;
+                container.appendChild(snowflake);
+            }
+        }
+        createSnowflakes();
+
+        let map = [];
+        let isRunning = false;
+
+        const directions = [
+            [-1, 0], [1, 0],    // left, right
+            [0, -1], [0, 1],    // up, down
+            [-1, -1], [1, -1],  // top-left, top-right
+            [-1, 1], [1, 1]     // bottom-left, bottom-right
+        ];
+
+        const DEFAULT_DELAY_MS = 100;
+        const ELF_AREA = { width: 180, height: 240, offsetX: 158 };
+        const ELF_SPRITES = {
+            front: './elve_front.png',
+            back: './elve_back.png',
+            left: './elve_left.png',
+            right: './elve_right.png',
+        };
+
+        let elfTimers = [];
+        let elfData = [];
+
+        const computeElfBounds = () => {
+            const warehouse = document.getElementById('warehouse');
+            const areaHeight = warehouse ? warehouse.clientHeight : ELF_AREA.height;
+            const startY = Math.max(12, (areaHeight - ELF_AREA.height) / 2);
+            return {
+                minX: ELF_AREA.offsetX,
+                maxX: ELF_AREA.offsetX + ELF_AREA.width - 32,
+                minY: startY,
+                maxY: startY + ELF_AREA.height - 32,
+                width: warehouse ? warehouse.clientWidth : 640,
+                height: areaHeight || 360,
+            };
+        };
+
+        const clearElfTimers = () => {
+            elfTimers.forEach(t => clearTimeout(t));
+            elfTimers = [];
+        };
+
+        const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
+
+        function renderElves() {
+            const elves = document.getElementById('elves');
+            if (!elves) return;
+            clearElfTimers();
+            elves.innerHTML = '';
+            elfData = [];
+            const bounds = computeElfBounds();
+
+            Object.values(ELF_SPRITES)
+                .sort(() => Math.random() - 0.5)
+                .forEach(src => {
+                    const node = document.createElement('img');
+                    node.src = src;
+                    node.alt = 'Elf';
+                    node.className = 'elf';
+
+                    const x = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+                    const y = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
+                    node.style.transform = `translate(${x}px, ${y}px)`;
+
+                    elfData.push({ node, x, y });
+                    elves.appendChild(node);
+                });
+
+            const pickSprite = (dx, dy) => {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    return dx >= 0 ? ELF_SPRITES.right : ELF_SPRITES.left;
+                }
+                return dy >= 0 ? ELF_SPRITES.front : ELF_SPRITES.back;
+            };
+
+            const scheduleElf = elf => {
+                const delay = 280 + Math.random() * 420;
+                const timer = setTimeout(() => {
+                    const dx = (Math.random() - 0.5) * 100;
+                    const dy = (Math.random() - 0.5) * 100;
+                    elf.x = clamp(elf.x + dx, bounds.minX, bounds.maxX);
+                    elf.y = clamp(elf.y + dy, bounds.minY, bounds.maxY);
+                    const tilt = (Math.random() - 0.5) * 12;
+                    elf.node.src = pickSprite(dx, dy);
+                    elf.node.style.transform = `translate(${elf.x}px, ${elf.y}px) rotate(${tilt}deg)`;
+                    scheduleElf(elf);
+                }, delay);
+                elfTimers.push(timer);
+            };
+
+            elfData.forEach(scheduleElf);
+        }
+
+        function sendElvesToCafeteria() {
+            if (!elfData.length) return;
+            clearElfTimers();
+            const bounds = computeElfBounds();
+            const exitX = bounds.width + 80;
+            const laneBase = Math.max(16, bounds.height - 72);
+            const laneSpacing = 22;
+
+            elfData.forEach((elf, idx) => {
+                const laneY = clamp(laneBase - idx * laneSpacing, 8, bounds.height - 40);
+                const delay = idx * 160;
+                const timer = setTimeout(() => {
+                    const tilt = (Math.random() - 0.5) * 10;
+                    elf.node.src = ELF_SPRITES.right;
+                    elf.node.style.transition = 'transform 0.9s ease';
+                    elf.node.style.transform = `translate(${exitX}px, ${laneY}px) rotate(${tilt}deg)`;
+                }, delay);
+                elfTimers.push(timer);
+            });
+        }
+
+        function parseInput() {
+            const input = document.getElementById('puzzleInput').value;
+            const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            map = lines.map(line => line.split(''));
+            return map;
+        }
+
+        function countRolls() {
+            let count = 0;
+            for (let row of map) {
+                for (let cell of row) {
+                    if (cell === '@') count++;
+                }
+            }
+            return count;
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+
+            let totalRolls = 0;
+            
+            map.forEach((row, y) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'grid-row';
+                
+                row.forEach((cell, x) => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+                    cellDiv.id = `cell-${x}-${y}`;
+                    
+                    if (cell === '@') {
+                        cellDiv.classList.add('cell-roll');
+                        totalRolls++;
+                    } else {
+                        cellDiv.classList.add('cell-empty');
+                    }
+                    
+                    rowDiv.appendChild(cellDiv);
+                });
+                
+                grid.appendChild(rowDiv);
+            });
+
+            document.getElementById('initialRolls').textContent = totalRolls;
+            document.getElementById('remainingRolls').textContent = totalRolls;
+            document.getElementById('totalRemoved').textContent = '0';
+            document.getElementById('waveRemoved').textContent = '0';
+            document.getElementById('wavesComplete').textContent = '0';
+        }
+
+        function getCell(x, y) {
+            return document.getElementById(`cell-${x}-${y}`);
+        }
+
+        function moveForklift(x, y, carrying = false) {
+            const forklift = document.getElementById('forklift');
+            const cell = getCell(x, y);
+            if (cell && forklift) {
+                const rect = cell.getBoundingClientRect();
+                const warehouseRect = document.getElementById('warehouse').getBoundingClientRect();
+                forklift.style.display = 'block';
+                forklift.style.left = (rect.left - warehouseRect.left - 5) + 'px';
+                forklift.style.top = (rect.top - warehouseRect.top - 10) + 'px';
+                
+                if (carrying) {
+                    forklift.classList.add('carrying');
+                } else {
+                    forklift.classList.remove('carrying');
+                }
+            }
+        }
+
+        function hideForklift() {
+            document.getElementById('forklift').style.display = 'none';
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function getDelay() {
+            return DEFAULT_DELAY_MS;
+        }
+
+        async function startAnimation() {
+            if (isRunning) return;
+            isRunning = true;
+
+            document.getElementById('wall').classList.remove('breaking');
+            document.getElementById('cafeteriaSign').classList.remove('visible');
+
+            parseInput();
+            renderGrid();
+
+            const dimensionX = map[0].length;
+            const dimensionY = map.length;
+
+            let totalRemoved = 0;
+            let waveNumber = 0;
+            let accessibleInWave = 1; // Start with 1 to enter loop
+
+            while (accessibleInWave > 0 && isRunning) {
+                waveNumber++;
+                document.getElementById('waveRemoved').textContent = '0';
+
+                // Phase 1: Find all accessible rolls in this wave
+                const accessibleRolls = [];
+
+                for (let y = 0; y < dimensionY && isRunning; y++) {
+                    for (let x = 0; x < dimensionX && isRunning; x++) {
+                        if (map[y][x] === '@') {
+                            let adjacentCount = 0;
+
+                            for (let dir of directions) {
+                                const newX = x + dir[0];
+                                const newY = y + dir[1];
+
+                                if (newX >= 0 && newX < dimensionX && newY >= 0 && newY < dimensionY) {
+                                    if (map[newY][newX] === '@') {
+                                        adjacentCount++;
+                                    }
+                                }
+                            }
+
+                            if (adjacentCount < 4) {
+                                accessibleRolls.push({ x, y });
+                            }
+                        }
+                    }
+                }
+
+                accessibleInWave = accessibleRolls.length;
+
+                if (accessibleInWave === 0) break;
+
+                // Phase 2: Highlight all accessible rolls
+                for (let roll of accessibleRolls) {
+                    const cell = getCell(roll.x, roll.y);
+                    if (cell) {
+                        cell.classList.add('cell-accessible');
+                    }
+                }
+
+                await sleep(getDelay() * 5);
+
+                // Phase 3: Remove them one by one with forklift
+                let removedThisWave = 0;
+                for (let roll of accessibleRolls) {
+                    if (!isRunning) break;
+
+                    const cell = getCell(roll.x, roll.y);
+                    moveForklift(roll.x, roll.y, false);
+                    
+                    await sleep(getDelay());
+                    
+                    moveForklift(roll.x, roll.y, true);
+                    cell.classList.remove('cell-accessible');
+                    cell.classList.add('cell-removing');
+                    
+                    await sleep(getDelay() * 2);
+                    
+                    cell.classList.remove('cell-roll', 'cell-removing');
+                    cell.classList.add('cell-empty');
+                    cell.style.transform = '';
+                    cell.style.opacity = '';
+                    
+                    // Update map
+                    map[roll.y][roll.x] = '.';
+                    
+                    removedThisWave++;
+                    totalRemoved++;
+                    
+                    document.getElementById('waveRemoved').textContent = removedThisWave;
+                    document.getElementById('totalRemoved').textContent = totalRemoved;
+                    document.getElementById('remainingRolls').textContent = countRolls();
+                }
+
+                hideForklift();
+                document.getElementById('wavesComplete').textContent = waveNumber;
+
+                await sleep(getDelay() * 3);
+            }
+
+            if (isRunning) {
+                hideForklift();
+                document.getElementById('wall').classList.add('breaking');
+                await sleep(1000);
+                document.getElementById('cafeteriaSign').classList.add('visible');
+                sendElvesToCafeteria();
+            }
+
+            isRunning = false;
+        }
+
+        // Initial render
+        renderElves();
+        startAnimation();
+    </script>
+</body>
+</html>

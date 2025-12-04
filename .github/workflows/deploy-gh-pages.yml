@@ -27,12 +27,14 @@ jobs:
           set -euo pipefail
           mkdir -p public
 
-          # Base web entrypoint and assets
-          rsync -av web/ public/
-
-          # Grid prototype/demo
+          # Grid site (primary)
           if [ -d grid ]; then
-            rsync -av grid/ public/grid/
+            rsync -av grid/ public/
+          fi
+
+          # Optional: keep the old web entrypoint under /web
+          if [ -d web ]; then
+            rsync -av web/ public/web/
           fi
 
           # Copy each day's animation folder (html + assets), then strip code files

@@ -119,11 +119,13 @@
   <script>
     // Door layout: per-door top/left/width/height in percentages of the scene.
     // Adjust these numbers to match the printed doors on the background image.
+    const BASE_PATH = window.location.pathname.includes('/aoc2025') ? '/aoc2025' : '';
+
     const doors = [
-      { day: 1, url: '../src/days/day1/animation.html', top: 27, left: 5,  width: 26, height: 14 },
-      { day: 2, url: '../src/days/day2/animation.html', top: 27, left: 35, width: 27, height: 14 },
-      { day: 3, url: '../src/days/day3/animation.html', top: 27, left: 65, width: 29, height: 14 },
-      { day: 4, url: '../src/days/day4/animation.html', top: 42, left: 5,  width: 26, height: 14 },
+      { day: 1, path: '/src/days/day1/animation.html', top: 27, left: 5,  width: 26, height: 14 },
+      { day: 2, path: '/src/days/day2/animation.html', top: 27, left: 35, width: 27, height: 14 },
+      { day: 3, path: '/src/days/day3/animation.html', top: 27, left: 65, width: 29, height: 14 },
+      { day: 4, path: '/src/days/day4/animation.html', top: 42, left: 5,  width: 26, height: 14 },
       { day: 5, top: 42, left: 35, width: 27, height: 14 },
       { day: 6, top: 42, left: 65, width: 29, height: 14 },
       { day: 7, top: 58, left: 5,  width: 26, height: 14 },
@@ -135,8 +137,11 @@
     ];
 
     const grid = document.getElementById('grid');
-    doors.forEach(({ day, url, top, left, width, height }) => {
+    const resolvePath = path => `${BASE_PATH}${path}`;
+
+    doors.forEach(({ day, path, top, left, width, height }) => {
       const node = document.createElement('div');
+      const url = path ? resolvePath(path) : null;
       node.className = `door day-${day}` + (url ? '' : ' disabled');
       node.style.top = `${top}%`;
       node.style.left = `${left}%`;

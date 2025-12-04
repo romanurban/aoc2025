@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advent of Code · Animations</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
+    :root {
+      --gold: #f1ca65;
+      --green: #3a693a;
+      --green-dark: #1f3d1f;
+      --glass: rgba(0, 0, 0, 0.45);
+      --glow: 0 15px 35px rgba(0, 0, 0, 0.45);
+      --font: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0c1320;
+      color: var(--gold);
+      font-family: var(--font);
+      padding: 18px;
+    }
+    .scene {
+      position: relative;
+      width: min(95vw, 760px);
+      aspect-ratio: 2 / 3;
+      background: url('./bg_main.png') center/contain no-repeat;
+      filter: drop-shadow(var(--glow));
+    }
+    .grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .door {
+      position: absolute;
+      border-radius: 10px;
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+      pointer-events: auto;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      aspect-ratio: 1 / 0.93;
+      width: var(--door-width, 22%);
+      height: var(--door-height, auto);
+    }
+    .door a, .door span {
+      display: grid;
+      place-items: center;
+      text-decoration: none;
+      color: rgba(241, 202, 101, 0.8);
+      font-weight: 700;
+      font-size: 26px;
+      letter-spacing: 0.04em;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(255,255,255,0.12);
+      width: 100%;
+      height: 100%;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        0 12px 24px rgba(0,0,0,0.25);
+    }
+    .door a:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.45); }
+    .door.disabled span { opacity: 0.2; }
+    /* Defaults; each door can override via inline CSS variables set in JS */
+    :root {
+      --door-width: 22%;
+      --door-height: 23%;
+    }
+    /* Per-day overrides (currently none) */
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.3);
+      background: rgba(0,0,0,0.35);
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(3px);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 12px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+    @media (max-width: 520px) {
+      .scene { width: 100vw; }
+      .door a, .door span { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene" aria-label="Advent calendar of animated solutions">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <script>
+    // Door layout: per-door top/left/width/height in percentages of the scene.
+    // Adjust these numbers to match the printed doors on the background image.
+    const doors = [
+      { day: 1, url: '../src/days/day1/animation.html', top: 27, left: 5,  width: 26, height: 14 },
+      { day: 2, url: '../src/days/day2/animation.html', top: 27, left: 35, width: 27, height: 14 },
+      { day: 3, url: '../src/days/day3/animation.html', top: 27, left: 65, width: 29, height: 14 },
+      { day: 4, url: '../src/days/day4/animation.html', top: 42, left: 5,  width: 26, height: 14 },
+      { day: 5, top: 42, left: 35, width: 27, height: 14 },
+      { day: 6, top: 42, left: 65, width: 29, height: 14 },
+      { day: 7, top: 58, left: 5,  width: 26, height: 14 },
+      { day: 8, top: 58, left: 35, width: 27, height: 14 },
+      { day: 9, top: 58, left: 65, width: 29, height: 14 },
+      { day: 10, top: 74, left: 5,  width: 26, height: 14 },
+      { day: 11, top: 74, left: 35, width: 27, height: 14 },
+      { day: 12, top: 74, left: 65, width: 29, height: 14 },
+    ];
+
+    const grid = document.getElementById('grid');
+    doors.forEach(({ day, url, top, left, width, height }) => {
+      const node = document.createElement('div');
+      node.className = `door day-${day}` + (url ? '' : ' disabled');
+      node.style.top = `${top}%`;
+      node.style.left = `${left}%`;
+      node.style.setProperty('--door-width', `${width}%`);
+      node.style.setProperty('--door-height', `${height}%`);
+
+      if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        //link.textContent = day;
+        link.setAttribute('aria-label', `Open Day ${day} animation`);
+        node.appendChild(link);
+      } else {
+        const span = document.createElement('span');
+        //span.textContent = day;
+        node.appendChild(span);
+      }
+      grid.appendChild(node);
+    });
+  </script>
+</body>
+</html>

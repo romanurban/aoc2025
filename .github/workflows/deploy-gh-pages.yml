@@ -1,0 +1,60 @@
+name: Deploy Animations to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+
+      - name: Collect site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public
+
+          # Base web entrypoint and assets
+          rsync -av web/ public/
+
+          # Grid prototype/demo
+          if [ -d grid ]; then
+            rsync -av grid/ public/grid/
+          fi
+
+          # Copy each day's animation folder (html + assets), then strip code files
+          find src/days -maxdepth 2 -type f -name 'animation.html' -print0 | while IFS= read -r -d '' file; do
+            dir="$(dirname "$file")"
+            rel="${dir#./}"
+            dest="public/${rel}"
+            mkdir -p "$dest"
+            rsync -av "$dir"/ "$dest"/
+          done
+
+          # Remove non-static/code files from public
+          find public -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.mjs' -o -name '*.js.map' -o -name '*.map' -o -name '*.md' -o -name '*.txt' -o -name '*.json' \) -delete
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -17,11 +17,11 @@
       --mono: 'Chivo Mono', 'DM Mono', 'Space Mono', monospace;
       --sans: 'Space Grotesk', 'Inter', system-ui, sans-serif;
       --radius: 18px;
-      /* Overlay placement knobs */
-      --panel-top: 42vh;
-      --panel-left: 21vw;
-      --panel-width: min(570px, 50vw);
-      --panel-height: min(460px, 50vw);
+      /* Overlay placement knobs - now relative to video content (0-1) */
+      --overlay-x: 0.19;  /* horizontal position within video (0=left, 1=right) */
+      --overlay-y: 0.44;  /* vertical position within video (0=top, 1=bottom) */
+      --panel-width: min(740px, 70vw);
+      --panel-height: min(860px, 50vw);
       --panel-rotation: -3deg;
     }
     * { box-sizing: border-box; }
@@ -44,8 +44,6 @@
     }
     .overlay {
       position: absolute;
-      top: var(--panel-top);
-      left: var(--panel-left);
       width: var(--panel-width);
       height: var(--panel-height-fixed, var(--panel-height));
       max-width: 95vw;
@@ -55,17 +53,23 @@
       transform-origin: top left;
       transform: rotate(var(--panel-rotation));
     }
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       :root {
-        --panel-top: 46vh;
-        --panel-left: 4vw;
-        --panel-width: 60vw;
-        --panel-height: min(460px, 50vw);
+        --overlay-x: 0.08;
+        --overlay-y: 0.38;
+        --panel-width: 58vw;
+        --panel-height: 52vh;
+        --panel-height-fixed: 52vh;
         --panel-rotation: -3deg;
-        --panel-height-fixed: min(460px, 60vw);
       }
-      .overlay {
-        transform: rotate(var(--panel-rotation));
+    }
+    @media (max-width: 480px) {
+      :root {
+        --overlay-x: 0.24;
+        --overlay-y: 0.42;
+        --panel-width: 68vw;
+        --panel-height: 48vh;
+        --panel-height-fixed: 48vh;
       }
     }
     .panel {
@@ -79,6 +83,9 @@
       padding: 16px;
       overflow: hidden;
       backdrop-filter: blur(12px);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
     .panel::after {
       content: '';
@@ -212,7 +219,8 @@
       border: 1px dashed rgba(255, 255, 255, 0.16);
       border-radius: 12px;
       padding: 12px;
-      min-height: 140px;
+      min-height: 80px;
+      flex: 1;
       display: grid;
       gap: 6px;
       overflow: hidden;
@@ -519,6 +527,53 @@
     }
 
     els.solveStart.addEventListener('click', startFromOverlay);
+
+    // Position overlay relative to video content (accounts for object-fit: cover)
+    const video = document.querySelector('video.bg');
+    const overlay = document.querySelector('.overlay');
+
+    function positionOverlay() {
+      if (!video.videoWidth || !video.videoHeight) return;
+
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const containerW = window.innerWidth;
+      const containerH = window.innerHeight;
+      const containerAspect = containerW / containerH;
+
+      // Calculate where the video content actually renders with object-fit: cover
+      let renderedW, renderedH, offsetX, offsetY;
+
+      if (containerAspect > videoAspect) {
+        // Container is wider - video fills width, crops top/bottom
+        renderedW = containerW;
+        renderedH = containerW / videoAspect;
+        offsetX = 0;
+        offsetY = (containerH - renderedH) / 2;
+      } else {
+        // Container is taller - video fills height, crops left/right
+        renderedH = containerH;
+        renderedW = containerH * videoAspect;
+        offsetX = (containerW - renderedW) / 2;
+        offsetY = 0;
+      }
+
+      // Get position values (0-1 relative to video content)
+      const style = getComputedStyle(document.documentElement);
+      const relX = parseFloat(style.getPropertyValue('--overlay-x')) || 0.21;
+      const relY = parseFloat(style.getPropertyValue('--overlay-y')) || 0.42;
+
+      // Calculate absolute position within the rendered video area
+      const left = offsetX + (renderedW * relX);
+      const top = offsetY + (renderedH * relY);
+
+      overlay.style.left = `${left}px`;
+      overlay.style.top = `${top}px`;
+    }
+
+    video.addEventListener('loadedmetadata', positionOverlay);
+    window.addEventListener('resize', positionOverlay);
+    // Initial position if video already loaded
+    if (video.readyState >= 1) positionOverlay();
   </script>
 </body>
 </html>

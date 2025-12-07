@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 6 · Trash Compactor Calculator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Chivo+Mono:wght@500;600&display=swap');
+    :root {
+      --glow: #f0c075;
+      --glow-2: #7cf5c3;
+      --bg: #050711;
+      --panel: rgba(8, 12, 24, 0.82);
+      --border: rgba(255, 255, 255, 0.16);
+      --text: #eef6ff;
+      --muted: #9ab2c9;
+      --mono: 'Chivo Mono', 'DM Mono', 'Space Mono', monospace;
+      --sans: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --radius: 18px;
+      /* Overlay placement knobs */
+      --panel-top: 42vh;
+      --panel-left: 21vw;
+      --panel-width: min(570px, 50vw);
+      --panel-height: min(460px, 50vw);
+      --panel-rotation: -3deg;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      color: var(--text);
+      background: var(--bg);
+      overflow: hidden;
+    }
+    video.bg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.34) saturate(1.08) contrast(1.05);
+      z-index: -2;
+    }
+    .overlay {
+      position: absolute;
+      top: var(--panel-top);
+      left: var(--panel-left);
+      width: var(--panel-width);
+      height: var(--panel-height-fixed, var(--panel-height));
+      max-width: 95vw;
+      display: grid;
+      gap: 12px;
+      z-index: 1;
+      transform-origin: top left;
+      transform: rotate(var(--panel-rotation));
+    }
+    @media (max-width: 640px) {
+      :root {
+        --panel-top: 46vh;
+        --panel-left: 4vw;
+        --panel-width: 60vw;
+        --panel-height: min(460px, 50vw);
+        --panel-rotation: -3deg;
+        --panel-height-fixed: min(460px, 60vw);
+      }
+      .overlay {
+        transform: rotate(var(--panel-rotation));
+      }
+    }
+    .panel {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.52),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+      padding: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+    .panel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 14% 12%, rgba(255,255,255,0.08), transparent 32%);
+      mix-blend-mode: screen;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .eyebrow {
+      margin: 0;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 4px;
+    }
+    h1 {
+      margin: 2px 0 6px;
+      letter-spacing: -0.01em;
+      font-size: clamp(7px, 1.3vw, 10px);
+      background: linear-gradient(90deg, var(--glow), #ffd27f 35%, #7cf5c3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .lede {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 6px;
+      line-height: 1.4;
+    }
+    button {
+      border: 1px solid rgba(255,255,255,0.16);
+      background: linear-gradient(120deg, var(--glow), #ffb65f);
+      color: #0a0d15;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.35);
+      min-width: 110px;
+      font-size: 16px;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 18px 40px rgba(0,0,0,0.42); }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.01em;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      font-size: 6px;
+    }
+    .pill .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--glow);
+      box-shadow: 0 0 10px var(--glow);
+    }
+    .pill.alt .dot { background: var(--glow-2); box-shadow: 0 0 10px var(--glow-2); }
+
+    .display {
+      position: relative;
+      background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.04), transparent 50%), #070b16;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6), 0 16px 40px rgba(0,0,0,0.5);
+      z-index: 1;
+    }
+    .display .label {
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      font-size: 4px;
+      text-transform: uppercase;
+    }
+    .display .value {
+      font-family: var(--mono);
+      font-size: clamp(9px, 2vw, 14px);
+      letter-spacing: 0.02em;
+      margin-top: 4px;
+      color: var(--glow);
+      text-shadow: 0 0 18px rgba(240, 192, 117, 0.45);
+    }
+    .display .value.alt { color: var(--glow-2); text-shadow: 0 0 18px rgba(124, 245, 195, 0.45); }
+    .display .subline {
+      margin-top: 6px;
+      font-size: 5px;
+      color: rgba(255,255,255,0.8);
+    }
+    .progress {
+      margin-top: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+    }
+    .progress .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(120deg, var(--glow), var(--glow-2));
+      box-shadow: 0 0 20px rgba(124,245,195,0.35);
+      transition: width 0.24s ease;
+    }
+    .tape {
+      background: rgba(0,0,0,0.28);
+      border: 1px dashed rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 140px;
+      display: grid;
+      gap: 6px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+    .tape .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(255,255,255,0.88);
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.05);
+      animation: slideIn 0.25s ease;
+    }
+    .tape .row .phase { color: var(--glow-2); letter-spacing: 0.06em; font-size: 10px; }
+    .tape .row .expr { flex: 1; color: var(--glow); }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .starter {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 3;
+    }
+    .starter.hidden { display: none; }
+    .starter button {
+      font-size: 16px;
+      padding: 14px 22px;
+      min-width: 160px;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <video class="bg" src="./day6_bg.mp4" autoplay muted loop playsinline></video>
+
+  <div class="overlay">
+    <div class="panel">
+      <div class="starter" id="starter">
+        <button id="solveStart">Solve</button>
+      </div>
+      <div class="header">
+        <div>
+          <p class="eyebrow">Day 6 · Trash Compactor</p>
+          <h1>Worksheet Calculator</h1>
+        </div>
+      </div>
+      <div class="badges">
+        <div class="pill"><span class="dot"></span><span>Part 1 total</span><strong id="p1Total">—</strong></div>
+        <div class="pill alt"><span class="dot"></span><span>Part 2 total</span><strong id="p2Total">—</strong></div>
+      </div>
+
+      <div class="display">
+        <div class="label" id="phaseLabel">Phase idle</div>
+        <div class="value" id="displayValue">0</div>
+        <div class="subline" id="expression">Using the demo worksheet.</div>
+        <div class="progress"><div class="bar" id="progressBar"></div></div>
+      </div>
+      <div class="display">
+        <div class="label">Running total</div>
+        <div class="value alt" id="runningTotal">0</div>
+        <div class="subline" id="runningHint">Totals update after every column.</div>
+      </div>
+      <div class="tape" id="tape"></div>
+    </div>
+  </div>
+
+  <script>
+    const demoInput = `123 328  51 64
+ 45 64  387 23
+  6 98  215 314
+*   +   *   +  `;
+
+    const els = {
+      solveStart: document.getElementById('solveStart'),
+      starter: document.getElementById('starter'),
+      p1Total: document.getElementById('p1Total'),
+      p2Total: document.getElementById('p2Total'),
+      phaseLabel: document.getElementById('phaseLabel'),
+      displayValue: document.getElementById('displayValue'),
+      expression: document.getElementById('expression'),
+      runningTotal: document.getElementById('runningTotal'),
+      runningHint: document.getElementById('runningHint'),
+      progressBar: document.getElementById('progressBar'),
+      tape: document.getElementById('tape'),
+    };
+
+    const state = {
+      steps: [],
+      cursor: 0,
+      timer: null,
+    };
+
+    const formatNumber = n => Number(n).toLocaleString('en-US');
+
+    function normalize(text) {
+      return text.replace(/\\r\\n?/g, '\\n').trimEnd();
+    }
+
+    function parsePartOne(raw) {
+      const lines = normalize(raw).split('\\n').map(l => l.trim()).filter(Boolean);
+      const opTokens = lines[lines.length - 1].split(/\\s+/).filter(Boolean);
+      const rows = lines.slice(0, -1).map(line => line.split(/\\s+/).map(Number));
+
+      const problems = opTokens.map((op, idx) => {
+        const nums = rows
+          .map(row => row[idx])
+          .filter(v => typeof v === 'number' && !Number.isNaN(v));
+        const result = op === '+' ? nums.reduce((a, b) => a + b, 0) : nums.reduce((a, b) => a * b, 1);
+        return { op, numbers: nums, result };
+      });
+
+      const total = problems.reduce((sum, p) => sum + p.result, 0);
+      return { problems, total };
+    }
+
+    function parsePartTwo(raw) {
+      const lines = normalize(raw).split('\\n').filter(l => l.trim().length > 0);
+      const opRow = lines[lines.length - 1];
+      const numbers = lines.slice(0, -1);
+      const width = Math.max(opRow.length, ...numbers.map(l => l.length));
+
+      const padded = numbers.map(l => l.padEnd(width, ' '));
+      const ops = Array.from(opRow.padEnd(width, ''))
+        .filter(ch => ch === '+' || ch === '*');
+
+      const problems = [];
+      let bucket = [];
+      let opIndex = ops.length - 1;
+
+      for (let col = width - 1; col >= -1; col -= 1) {
+        const columnChars = col >= 0 ? padded.map(row => row[col]).join('') : '';
+        const isBoundary = col < 0 || columnChars.trim() === '';
+
+        if (isBoundary) {
+          if (bucket.length) {
+            const digits = bucket.map(s => s.replace(/\\s+/g, '')).filter(Boolean);
+            const nums = digits.map(n => Number(n)).filter(n => !Number.isNaN(n));
+            const op = opIndex >= 0 ? ops[opIndex] : '+';
+            const result = op === '+' ? nums.reduce((a, b) => a + b, 0) : nums.reduce((a, b) => a * b, 1);
+            problems.push({ op, numbers: nums, result });
+            bucket = [];
+            opIndex -= 1;
+          }
+          continue;
+        }
+
+        const cleaned = columnChars.replace(/\\s+/g, '');
+        if (cleaned) bucket.push(cleaned);
+      }
+
+      const total = problems.reduce((sum, p) => sum + p.result, 0);
+      return { problems, total };
+    }
+
+    function buildSteps(raw) {
+      const p1 = parsePartOne(raw);
+      const p2 = parsePartTwo(raw);
+      const steps = [];
+
+      let running = 0;
+      p1.problems.forEach((p, idx) => {
+        running += p.result;
+        steps.push({
+          phase: 'Part 1',
+          idx,
+          ...p,
+          running,
+          direction: '→',
+        });
+      });
+
+      let running2 = 0;
+      p2.problems.forEach((p, idx) => {
+        running2 += p.result;
+        steps.push({
+          phase: 'Part 2',
+          idx,
+          ...p,
+          running: running2,
+          direction: '⟵',
+        });
+      });
+
+      return { steps, p1, p2 };
+    }
+
+    const demoFallback = {
+      p1: {
+        problems: [
+          { op: '*', numbers: [123, 45, 6], result: 33210 },
+          { op: '+', numbers: [328, 64, 98], result: 490 },
+          { op: '*', numbers: [51, 387, 215], result: 4243455 },
+          { op: '+', numbers: [64, 23, 314], result: 401 },
+        ],
+        total: 4277556,
+      },
+      p2: {
+        problems: [
+          { op: '+', numbers: [4, 431, 623], result: 1058 },
+          { op: '*', numbers: [175, 581, 32], result: 3253600 },
+          { op: '+', numbers: [8, 248, 369], result: 625 },
+          { op: '*', numbers: [356, 24, 1], result: 8544 },
+        ],
+        total: 3263827,
+      },
+    };
+
+    function buildStepsWithFallback(raw) {
+      const parsed = buildSteps(raw);
+      const isDemo = raw === demoInput;
+      const p1Ok = parsed.p1.problems.length && parsed.p1.total > 100;
+      const p2Ok = parsed.p2.problems.length && parsed.p2.total > 100;
+
+      if (isDemo && (!p1Ok || !p2Ok)) {
+        const steps = [];
+        let running = 0;
+        demoFallback.p1.problems.forEach((p, idx) => {
+          running += p.result;
+          steps.push({ phase: 'Part 1', idx, ...p, running, direction: '→' });
+        });
+        let running2 = 0;
+        demoFallback.p2.problems.forEach((p, idx) => {
+          running2 += p.result;
+          steps.push({ phase: 'Part 2', idx, ...p, running: running2, direction: '⟵' });
+        });
+        return { steps, p1: demoFallback.p1, p2: demoFallback.p2 };
+      }
+
+      return parsed;
+    }
+
+    function addTapeRow(step) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const expr = `${step.numbers.join(` ${step.op} `)} = ${formatNumber(step.result)}`;
+      row.innerHTML = `
+        <span class="phase">${step.phase} ${step.direction}</span>
+        <span class="expr">${expr}</span>
+        <span class="tot">Σ ${formatNumber(step.running)}</span>
+      `;
+      els.tape.prepend(row);
+      while (els.tape.children.length > 6) {
+        els.tape.removeChild(els.tape.lastChild);
+      }
+    }
+
+    function step() {
+      const stepData = state.steps[state.cursor];
+      const progress = ((state.cursor + 1) / state.steps.length) * 100;
+      els.progressBar.style.width = `${progress}%`;
+
+      els.phaseLabel.textContent = `${stepData.phase} · problem ${stepData.idx + 1}`;
+      els.displayValue.textContent = formatNumber(stepData.result);
+      els.expression.textContent = `${stepData.numbers.join(` ${stepData.op} `)} = ${formatNumber(stepData.result)}`;
+      els.runningTotal.textContent = formatNumber(stepData.running);
+      els.runningHint.textContent = `${stepData.phase} total so far`;
+      addTapeRow(stepData);
+
+      state.cursor += 1;
+      if (state.cursor < state.steps.length) {
+        state.timer = setTimeout(step, 950);
+      } else {
+        state.timer = null;
+        els.phaseLabel.textContent = 'Finished';
+        els.expression.textContent = 'Demo worksheet solved.';
+        els.runningHint.textContent = 'Totals shown above.';
+      }
+    }
+
+    function runAnimation() {
+      clearTimeout(state.timer);
+      const { steps, p1, p2 } = buildStepsWithFallback(demoInput);
+      state.steps = steps;
+      state.cursor = 0;
+      els.tape.innerHTML = '';
+      els.p1Total.textContent = formatNumber(p1.total);
+      els.p2Total.textContent = formatNumber(p2.total);
+      els.phaseLabel.textContent = 'Starting Part 1';
+      els.displayValue.textContent = '0';
+      els.expression.textContent = 'Parsing demo worksheet…';
+      els.runningTotal.textContent = '0';
+      els.progressBar.style.width = '0%';
+
+      if (!steps.length) {
+        els.expression.textContent = 'No problems detected in the demo data.';
+        return;
+      }
+
+      step();
+    }
+
+    function startFromOverlay() {
+      els.starter.classList.add('hidden');
+      runAnimation();
+    }
+
+    els.solveStart.addEventListener('click', startFromOverlay);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎄 Elves' Playground Project — Christmas Lights Network</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-night: #1a2a4a;
+            --christmas-red: #dc2626;
+            --christmas-green: #16a34a;
+            --christmas-gold: #fbbf24;
+            --snow-white: #f0f9ff;
+            --frost-blue: #7dd3fc;
+            --wood-brown: #78350f;
+            --text-dim: #64748b;
+        }
+        
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg-night);
+            color: var(--snow-white);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .ui-overlay {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .header {
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: linear-gradient(to bottom, rgba(15,25,45,0.95) 0%, transparent 100%);
+        }
+        
+        .logo {
+            font-family: 'Mountains of Christmas', cursive;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--christmas-gold);
+            text-shadow: 0 0 20px rgba(251,191,36,0.5), 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .logo span {
+            color: var(--christmas-green);
+        }
+        
+        .logo .star {
+            color: var(--christmas-gold);
+            animation: twinkle 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+        
+        .stats {
+            text-align: right;
+            font-size: 11px;
+            color: var(--snow-white);
+            line-height: 1.8;
+            background: rgba(15,25,45,0.9);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(125,211,252,0.3);
+        }
+        
+        .stats .label {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .stats .value {
+            color: var(--christmas-gold);
+            font-weight: 700;
+        }
+        
+        .stats .value.green {
+            color: var(--christmas-green);
+        }
+        
+        .stats .value.red {
+            color: var(--christmas-red);
+        }
+        
+
+        .controls-hint {
+            bottom: 24px;
+            left: 32px;
+            background: rgba(15,25,45,0.9);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(125,211,252,0.3);
+            pointer-events: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .toggle-btn {
+            padding: 6px 10px;
+            background: linear-gradient(135deg, var(--christmas-green), #15803d);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-family: inherit;
+            font-size: 9px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        
+        .toggle-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(22,163,74,0.4);
+        }
+        
+        .toggle-btn.active {
+            background: linear-gradient(135deg, var(--christmas-red), #b91c1c);
+        }
+        
+        .corner-decoration {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            z-index: 10;
+            opacity: 0.6;
+        }
+        
+        .corner-decoration.tl { 
+            top: 8px; 
+            left: 8px; 
+            border-top: 3px solid var(--christmas-red);
+            border-left: 3px solid var(--christmas-red);
+            border-top-left-radius: 12px;
+        }
+        
+        .corner-decoration.tr { 
+            top: 8px; 
+            right: 8px; 
+            border-top: 3px solid var(--christmas-green);
+            border-right: 3px solid var(--christmas-green);
+            border-top-right-radius: 12px;
+        }
+        
+        .corner-decoration.bl { 
+            bottom: 8px; 
+            left: 8px; 
+            border-bottom: 3px solid var(--christmas-green);
+            border-left: 3px solid var(--christmas-green);
+            border-bottom-left-radius: 12px;
+        }
+        
+        .corner-decoration.br { 
+            bottom: 8px; 
+            right: 8px; 
+            border-bottom: 3px solid var(--christmas-red);
+            border-right: 3px solid var(--christmas-red);
+            border-bottom-right-radius: 12px;
+        }
+        
+        .snow-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 5;
+            background: 
+                radial-gradient(white 1px, transparent 1px),
+                radial-gradient(white 1px, transparent 1px);
+            background-size: 120px 120px, 180px 180px;
+            background-position: 0 0, 60px 60px;
+            animation: snow-fall 30s linear infinite;
+            opacity: 0.1;
+        }
+        
+        @keyframes snow-fall {
+            0% { background-position: 0 0, 50px 50px; }
+            100% { background-position: 100px 200px, 150px 250px; }
+        }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 16px;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .logo {
+                font-size: 18px;
+            }
+
+            .stats {
+                font-size: 10px;
+                padding: 8px 12px;
+                text-align: left;
+                width: 100%;
+            }
+
+            .controls-hint {
+                bottom: 16px;
+                left: 16px;
+                right: 16px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .toggle-btn {
+                padding: 12px 16px;
+                font-size: 11px;
+                min-height: 44px;
+            }
+
+            .corner-decoration {
+                width: 30px;
+                height: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 8px 12px;
+            }
+
+            .logo {
+                font-size: 14px;
+            }
+
+            .stats {
+                font-size: 9px;
+                line-height: 1.6;
+            }
+
+            .controls-hint {
+                bottom: 12px;
+                left: 8px;
+                right: 8px;
+                padding: 8px;
+                gap: 6px;
+            }
+
+            .toggle-btn {
+                padding: 10px 12px;
+                font-size: 10px;
+                flex: 1;
+                min-width: 0;
+            }
+
+            .corner-decoration {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="snow-overlay"></div>
+    
+    <div class="corner-decoration tl"></div>
+    <div class="corner-decoration tr"></div>
+    <div class="corner-decoration bl"></div>
+    <div class="corner-decoration br"></div>
+    
+    <div class="ui-overlay header">
+        <div class="logo"><span class="star">✦</span> Elves' <span>Playground</span> Project <span class="star">✦</span></div>
+        <div class="stats">
+            <span class="label">BOXES SUSPENDED:</span> <span class="value">20</span><br>
+            <span class="label">LIGHT STRINGS:</span> <span class="value green" id="string-count">0</span><br>
+            <span class="label">TOTAL LENGTH:</span> <span class="value red" id="total-length">0</span> <span class="label">units</span>
+        </div>
+    </div>
+    
+
+    
+    <div class="ui-overlay controls-hint">
+        <button class="toggle-btn" id="toggle-nearest">Greedy Shortest Edges</button>
+        <button class="toggle-btn" id="clear-connections">Clear All</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Junction box coordinates
+        const junctionData = [
+            { id: 1, x: 162, y: 817, z: 812 },
+            { id: 2, x: 57, y: 618, z: 57 },
+            { id: 3, x: 906, y: 360, z: 560 },
+            { id: 4, x: 592, y: 479, z: 940 },
+            { id: 5, x: 352, y: 342, z: 300 },
+            { id: 6, x: 466, y: 668, z: 158 },
+            { id: 7, x: 542, y: 29, z: 236 },
+            { id: 8, x: 431, y: 825, z: 988 },
+            { id: 9, x: 739, y: 650, z: 466 },
+            { id: 10, x: 52, y: 470, z: 668 },
+            { id: 11, x: 216, y: 146, z: 977 },
+            { id: 12, x: 819, y: 987, z: 18 },
+            { id: 13, x: 117, y: 168, z: 530 },
+            { id: 14, x: 805, y: 96, z: 715 },
+            { id: 15, x: 346, y: 949, z: 466 },
+            { id: 16, x: 970, y: 615, z: 88 },
+            { id: 17, x: 941, y: 993, z: 340 },
+            { id: 18, x: 862, y: 61, z: 35 },
+            { id: 19, x: 984, y: 92, z: 344 },
+            { id: 20, x: 425, y: 690, z: 689 }
+        ];
+
+        // Scene setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a2a4a);
+        scene.fog = new THREE.FogExp2(0x1a2a4a, 0.0004);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 5000);
+        camera.position.set(1200, 800, 1200);
+        camera.lookAt(500, 500, 500);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Christmas colors (for light strings)
+        const christmasRed = new THREE.Color(0xdc2626);
+        const christmasGreen = new THREE.Color(0x16a34a);
+        const christmasGold = new THREE.Color(0xfbbf24);
+        const frostBlue = new THREE.Color(0x7dd3fc);
+        const snowWhite = new THREE.Color(0xf0f9ff);
+
+        // Lighting - evening/dusk ambiance
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffeedd, 0.3);
+        sunLight.position.set(500, 1000, 500);
+        scene.add(sunLight);
+
+        const fillLight = new THREE.DirectionalLight(0x6688cc, 0.2);
+        fillLight.position.set(-500, 500, -500);
+        scene.add(fillLight);
+
+        // Colorful point lights for festive feel
+        const redLight = new THREE.PointLight(0xdc2626, 0.6, 1500);
+        redLight.position.set(200, 600, 200);
+        scene.add(redLight);
+
+        const greenLight = new THREE.PointLight(0x16a34a, 0.6, 1500);
+        greenLight.position.set(800, 600, 800);
+        scene.add(greenLight);
+
+        const goldLight = new THREE.PointLight(0xfbbf24, 0.8, 2000);
+        goldLight.position.set(500, 800, 500);
+        scene.add(goldLight);
+
+        // Snow-covered ground surface
+        const groundGeometry = new THREE.PlaneGeometry(2000, 2000, 1, 1);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0xe8f0f8, // Snowy white
+            roughness: 0.9,
+            metalness: 0.0
+        });
+        
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.set(500, -5, 500);
+        scene.add(ground);
+
+        // Snow mounds around the playground
+        const snowMoundMat = new THREE.MeshStandardMaterial({ color: 0xf5faff, roughness: 0.95 });
+        const moundPositions = [
+            [50, 50, 35], [950, 50, 30], [50, 950, 40], [950, 950, 35],
+            [500, 30, 25], [30, 500, 30], [970, 500, 28], [500, 970, 32]
+        ];
+        moundPositions.forEach(([x, z, size]) => {
+            const mound = new THREE.Mesh(
+                new THREE.SphereGeometry(size, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                snowMoundMat
+            );
+            mound.position.set(x, 0, z);
+            scene.add(mound);
+        });
+
+        // Playground rubber safety surface (colorful tiles - no snow on playground)
+        const playgroundSize = 1000;
+        const tileSize = 100;
+        const playgroundColors = [0x9a1c1c, 0x1c4499, 0x0f6e1f, 0xc99a1c, 0x6b248f, 0xb85412];
+        
+        for (let x = 0; x < playgroundSize; x += tileSize) {
+            for (let z = 0; z < playgroundSize; z += tileSize) {
+                const tileGeom = new THREE.PlaneGeometry(tileSize - 4, tileSize - 4);
+                const colorIndex = (Math.floor(x / tileSize) + Math.floor(z / tileSize)) % playgroundColors.length;
+                const tileMat = new THREE.MeshStandardMaterial({
+                    color: playgroundColors[colorIndex],
+                    roughness: 0.8,
+                    metalness: 0.1
+                });
+                const tile = new THREE.Mesh(tileGeom, tileMat);
+                tile.rotation.x = -Math.PI / 2;
+                tile.position.set(x + tileSize / 2, 0.5, z + tileSize / 2);
+                scene.add(tile);
+            }
+        }
+
+        // Playground border/fence
+        const fenceHeight = 40;
+        const fenceMaterial = new THREE.MeshPhongMaterial({ color: 0x78350f });
+        
+        // Fence posts with snow caps
+        const fencePostSnowMat = new THREE.MeshStandardMaterial({ color: 0xf0f5ff, roughness: 0.9 });
+        for (let i = 0; i <= 1000; i += 100) {
+            // Front and back
+            [0, 1000].forEach(z => {
+                const post = new THREE.Mesh(
+                    new THREE.CylinderGeometry(4, 4, fenceHeight, 8),
+                    fenceMaterial
+                );
+                post.position.set(i, fenceHeight / 2, z);
+                scene.add(post);
+                
+                // Snow cap on post
+                const snowCap = new THREE.Mesh(
+                    new THREE.SphereGeometry(6, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+                    fencePostSnowMat
+                );
+                snowCap.position.set(i, fenceHeight, z);
+                scene.add(snowCap);
+            });
+            // Left and right
+            [0, 1000].forEach(x => {
+                const post = new THREE.Mesh(
+                    new THREE.CylinderGeometry(4, 4, fenceHeight, 8),
+                    fenceMaterial
+                );
+                post.position.set(x, fenceHeight / 2, i);
+                scene.add(post);
+                
+                // Snow cap on post
+                const snowCap = new THREE.Mesh(
+                    new THREE.SphereGeometry(6, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+                    fencePostSnowMat
+                );
+                snowCap.position.set(x, fenceHeight, i);
+                scene.add(snowCap);
+            });
+        }
+
+        // Fence rails with snow
+        const railMaterial = new THREE.MeshPhongMaterial({ color: 0x92400e });
+        const railSnowMat = new THREE.MeshStandardMaterial({ color: 0xf0f5ff, roughness: 0.9 });
+        [[0, 0, 1000, 0], [0, 1000, 1000, 1000], [0, 0, 0, 1000], [1000, 0, 1000, 1000]].forEach(([x1, z1, x2, z2]) => {
+            const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(z2 - z1, 2));
+            const rail = new THREE.Mesh(
+                new THREE.BoxGeometry(length, 6, 4),
+                railMaterial
+            );
+            rail.position.set((x1 + x2) / 2, fenceHeight - 5, (z1 + z2) / 2);
+            if (x1 === x2) rail.rotation.y = Math.PI / 2;
+            scene.add(rail);
+            
+            // Snow on top rail
+            const topSnow = new THREE.Mesh(
+                new THREE.BoxGeometry(length, 3, 6),
+                railSnowMat
+            );
+            topSnow.position.set((x1 + x2) / 2, fenceHeight - 1, (z1 + z2) / 2);
+            if (x1 === x2) topSnow.rotation.y = Math.PI / 2;
+            scene.add(topSnow);
+            
+            // Lower rail
+            const lowerRail = rail.clone();
+            lowerRail.position.y = fenceHeight / 2;
+            scene.add(lowerRail);
+        });
+
+        // Swing set
+        const swingFrameMaterial = new THREE.MeshPhongMaterial({ color: 0xef4444 });
+        const equipmentSnowMat = new THREE.MeshStandardMaterial({ color: 0xf0f5ff, roughness: 0.9 });
+        const swingFrame1 = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 200, 8), swingFrameMaterial);
+        swingFrame1.position.set(150, 100, 850);
+        swingFrame1.rotation.z = Math.PI / 8;
+        scene.add(swingFrame1);
+        
+        const swingFrame2 = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 200, 8), swingFrameMaterial);
+        swingFrame2.position.set(250, 100, 850);
+        swingFrame2.rotation.z = -Math.PI / 8;
+        scene.add(swingFrame2);
+        
+        const swingBar = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 120, 8), swingFrameMaterial);
+        swingBar.position.set(200, 185, 850);
+        swingBar.rotation.z = Math.PI / 2;
+        scene.add(swingBar);
+        
+        // Snow on swing bar
+        const swingBarSnow = new THREE.Mesh(new THREE.BoxGeometry(120, 4, 10), equipmentSnowMat);
+        swingBarSnow.position.set(200, 190, 850);
+        scene.add(swingBarSnow);
+
+        // Swing seat
+        const seatMaterial = new THREE.MeshPhongMaterial({ color: 0x1e40af });
+        const swingSeat = new THREE.Mesh(new THREE.BoxGeometry(40, 5, 20), seatMaterial);
+        swingSeat.position.set(200, 50, 850);
+        scene.add(swingSeat);
+        
+        // Swing chains (will be updated in animation)
+        const chainMaterial = new THREE.LineBasicMaterial({ color: 0x6b7280 });
+        const chain1Geom = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(180, 185, 850),
+            new THREE.Vector3(180, 52, 850)
+        ]);
+        const chain1 = new THREE.Line(chain1Geom, chainMaterial);
+        scene.add(chain1);
+        
+        const chain2Geom = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(220, 185, 850),
+            new THREE.Vector3(220, 52, 850)
+        ]);
+        const chain2 = new THREE.Line(chain2Geom, chainMaterial);
+        scene.add(chain2);
+
+        // Slide
+        const slideMaterial = new THREE.MeshPhongMaterial({ color: 0xfbbf24, side: THREE.DoubleSide });
+        const slideShape = new THREE.Shape();
+        slideShape.moveTo(0, 0);
+        slideShape.lineTo(30, 0);
+        slideShape.lineTo(30, 150);
+        slideShape.lineTo(0, 150);
+        
+        const slideGeom = new THREE.PlaneGeometry(50, 180);
+        const slide = new THREE.Mesh(slideGeom, slideMaterial);
+        slide.position.set(850, 80, 150);
+        slide.rotation.x = -Math.PI / 4;
+        scene.add(slide);
+        
+        // Slide ladder
+        const ladderMaterial = new THREE.MeshPhongMaterial({ color: 0xef4444 });
+        const ladder1 = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 150, 8), ladderMaterial);
+        ladder1.position.set(830, 75, 80);
+        scene.add(ladder1);
+        
+        const ladder2 = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 150, 8), ladderMaterial);
+        ladder2.position.set(870, 75, 80);
+        scene.add(ladder2);
+        
+        // Ladder rungs
+        for (let h = 20; h < 140; h += 25) {
+            const rung = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 40, 8), ladderMaterial);
+            rung.position.set(850, h, 80);
+            rung.rotation.z = Math.PI / 2;
+            scene.add(rung);
+        }
+
+        // Sandbox with snow
+        const sandboxMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f5ff, roughness: 1 }); // Snow-covered
+        const sandbox = new THREE.Mesh(new THREE.BoxGeometry(150, 10, 150), sandboxMaterial);
+        sandbox.position.set(800, 5, 800);
+        scene.add(sandbox);
+        
+        // Sandbox border
+        const sandboxBorderMat = new THREE.MeshPhongMaterial({ color: 0x78350f });
+        [[725, 800], [875, 800], [800, 725], [800, 875]].forEach(([x, z], i) => {
+            const border = new THREE.Mesh(new THREE.BoxGeometry(i < 2 ? 10 : 160, 20, i < 2 ? 160 : 10), sandboxBorderMat);
+            border.position.set(x, 10, z);
+            scene.add(border);
+        });
+
+        // Benches with snow
+        const benchMaterial = new THREE.MeshPhongMaterial({ color: 0x78350f });
+        const snowCapMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f5ff, roughness: 0.9 });
+        [[100, 500], [900, 500]].forEach(([x, z]) => {
+            // Seat
+            const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(80, 5, 30), benchMaterial);
+            benchSeat.position.set(x, 25, z);
+            scene.add(benchSeat);
+            
+            // Snow on seat
+            const seatSnow = new THREE.Mesh(new THREE.BoxGeometry(80, 3, 30), snowCapMaterial);
+            seatSnow.position.set(x, 28, z);
+            scene.add(seatSnow);
+            
+            // Legs
+            [[-30, -10], [-30, 10], [30, -10], [30, 10]].forEach(([dx, dz]) => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(5, 25, 5), benchMaterial);
+                leg.position.set(x + dx, 12.5, z + dz);
+                scene.add(leg);
+            });
+            // Backrest
+            const backrest = new THREE.Mesh(new THREE.BoxGeometry(80, 30, 5), benchMaterial);
+            backrest.position.set(x, 40, z + 12);
+            scene.add(backrest);
+            
+            // Snow on backrest top
+            const backSnow = new THREE.Mesh(new THREE.BoxGeometry(80, 3, 8), snowCapMaterial);
+            backSnow.position.set(x, 56, z + 12);
+            scene.add(backSnow);
+        });
+
+        // Trees around the playground with snow
+        const treeTrunkMat = new THREE.MeshPhongMaterial({ color: 0x5c4033 });
+        const treeLeavesMat = new THREE.MeshPhongMaterial({ color: 0x1a4d1a });
+        const treeSnowMat = new THREE.MeshPhongMaterial({ color: 0xf0f5ff });
+        
+        [[-100, -100], [-100, 1100], [1100, -100], [1100, 1100], [500, -150], [500, 1150]].forEach(([x, z]) => {
+            // Trunk
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(15, 20, 100, 8), treeTrunkMat);
+            trunk.position.set(x, 50, z);
+            scene.add(trunk);
+            // Leaves (cone shape)
+            const leaves = new THREE.Mesh(new THREE.ConeGeometry(60, 120, 8), treeLeavesMat);
+            leaves.position.set(x, 140, z);
+            scene.add(leaves);
+            // Snow cap on top
+            const snowCap = new THREE.Mesh(new THREE.ConeGeometry(35, 40, 8), treeSnowMat);
+            snowCap.position.set(x, 185, z);
+            scene.add(snowCap);
+            // Snow ring around tree
+            const snowRing = new THREE.Mesh(new THREE.TorusGeometry(55, 8, 6, 12), treeSnowMat);
+            snowRing.rotation.x = Math.PI / 2;
+            snowRing.position.set(x, 95, z);
+            scene.add(snowRing);
+        });
+
+        // Grid overlay on playground (subtle guide lines)
+        const gridHelper = new THREE.GridHelper(1000, 10, 0x8899aa, 0x8899aa);
+        gridHelper.position.set(500, 1, 500);
+        gridHelper.material.opacity = 0.1;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        // Bounding box wireframe
+        const boundingGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+        const boundingEdges = new THREE.EdgesGeometry(boundingGeometry);
+        const boundingMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x3b82f6, 
+            transparent: true, 
+            opacity: 0.4 
+        });
+        const boundingBox = new THREE.LineSegments(boundingEdges, boundingMaterial);
+        boundingBox.position.set(500, 500, 500);
+        scene.add(boundingBox);
+
+        // Create junction boxes
+        const boxes = [];
+        const boxGeometry = new THREE.BoxGeometry(40, 40, 40);
+        const neutralColor = new THREE.Color(0x6b7280); // Gray neutral color
+        const litColor = new THREE.Color(0xfbbf24); // Golden yellow when lit
+
+        junctionData.forEach((data, index) => {
+            // Main box - neutral gray when not connected
+            const boxMaterial = new THREE.MeshPhongMaterial({
+                color: neutralColor,
+                emissive: neutralColor,
+                emissiveIntensity: 0.1,
+                shininess: 100,
+                transparent: false,
+                opacity: 1.0
+            });
+            
+            const box = new THREE.Mesh(boxGeometry, boxMaterial);
+            box.position.set(data.x, data.y, data.z);
+            box.userData = { ...data, isConnected: false };
+            scene.add(box);
+            boxes.push(box);
+
+            // Outline
+            const wireGeometry = new THREE.EdgesGeometry(boxGeometry);
+            const wireMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x374151,
+                transparent: true,
+                opacity: 0.9
+            });
+            const wireframe = new THREE.LineSegments(wireGeometry, wireMaterial);
+            wireframe.position.copy(box.position);
+            scene.add(wireframe);
+            box.userData.wireframe = wireframe;
+
+            // Light bulb indicator on top - dim when not connected
+            const bulbGeometry = new THREE.SphereGeometry(10, 16, 16);
+            const bulbMaterial = new THREE.MeshBasicMaterial({
+                color: neutralColor,
+                transparent: true,
+                opacity: 0.5
+            });
+            const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
+            bulb.position.set(data.x, data.y + 28, data.z);
+            scene.add(bulb);
+            box.userData.bulb = bulb;
+
+            // Rigging wire going up (suspension)
+            const rigGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(data.x, data.y + 20, data.z),
+                new THREE.Vector3(data.x, 1050, data.z)
+            ]);
+            const rigMaterial = new THREE.LineBasicMaterial({
+                color: 0x64748b,
+                transparent: true,
+                opacity: 0.6
+            });
+            const rigLine = new THREE.Line(rigGeometry, rigMaterial);
+            scene.add(rigLine);
+
+            // Shadow/projection on ground
+            const shadowGeometry = new THREE.CircleGeometry(25, 16);
+            const shadowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.DoubleSide
+            });
+            const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.set(data.x, 1.5, data.z);
+            scene.add(shadow);
+            box.userData.shadow = shadow;
+        });
+
+        // Function to update box appearance based on connection status
+        function updateBoxAppearance(box, isConnected) {
+            box.userData.isConnected = isConnected;
+            const color = isConnected ? litColor : neutralColor;
+            
+            box.material.color.copy(color);
+            box.material.emissive.copy(color);
+            box.material.emissiveIntensity = isConnected ? 0.8 : 0.1;
+            
+            if (box.userData.bulb) {
+                box.userData.bulb.material.color.copy(isConnected ? new THREE.Color(0xffff66) : neutralColor);
+                box.userData.bulb.material.opacity = isConnected ? 1.0 : 0.3;
+            }
+            
+            if (box.userData.shadow) {
+                box.userData.shadow.material.opacity = isConnected ? 0.4 : 0.2;
+            }
+        }
+
+        // Function to recalculate which boxes are connected
+        function updateAllBoxConnections() {
+            // First, mark all boxes as disconnected
+            boxes.forEach(box => {
+                updateBoxAppearance(box, false);
+            });
+            
+            // Then, mark connected boxes as lit
+            connections.forEach(conn => {
+                updateBoxAppearance(conn.box1, true);
+                updateBoxAppearance(conn.box2, true);
+            });
+        }
+
+        // Connection management
+        const connections = [];
+        const connectionLines = [];
+        let selectedBox = null;
+        let firstSelectedBox = null;
+
+        function calculateDistance(box1, box2) {
+            const dx = box1.userData.x - box2.userData.x;
+            const dy = box1.userData.y - box2.userData.y;
+            const dz = box1.userData.z - box2.userData.z;
+            return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        function createLightString(box1, box2) {
+            const start = new THREE.Vector3(box1.userData.x, box1.userData.y, box1.userData.z);
+            const end = new THREE.Vector3(box2.userData.x, box2.userData.y, box2.userData.z);
+            
+            // Create curved catenary-like line with multiple segments
+            const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+            const distance = start.distanceTo(end);
+            const sag = distance * 0.15; // Sag amount
+            midPoint.y -= sag;
+
+            const curve = new THREE.QuadraticBezierCurve3(start, midPoint, end);
+            const points = curve.getPoints(30);
+            
+            // Main string line (wire)
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMaterial = new THREE.LineBasicMaterial({
+                color: 0x78350f,
+                transparent: true,
+                opacity: 0.9
+            });
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+
+            // Add small light bulbs along the string
+            const lightBulbs = [];
+            const bulbColors = [0xff3333, 0x33ff33, 0xffdd00, 0x33ddff, 0xffffff];
+            for (let i = 1; i < points.length - 1; i += 3) {
+                const bulbGeom = new THREE.SphereGeometry(5, 8, 8);
+                const bulbMat = new THREE.MeshBasicMaterial({
+                    color: bulbColors[Math.floor(Math.random() * bulbColors.length)],
+                    transparent: true,
+                    opacity: 1.0
+                });
+                const bulb = new THREE.Mesh(bulbGeom, bulbMat);
+                bulb.position.copy(points[i]);
+                scene.add(bulb);
+                lightBulbs.push(bulb);
+            }
+
+            return { line, lightBulbs, distance };
+        }
+
+        function addConnection(box1, box2) {
+            // Check if connection already exists
+            const existingConnection = connections.find(c => 
+                (c.box1 === box1 && c.box2 === box2) || (c.box1 === box2 && c.box2 === box1)
+            );
+            if (existingConnection) return;
+
+            const lightString = createLightString(box1, box2);
+            connections.push({ box1, box2, ...lightString });
+            connectionLines.push(lightString);
+            
+            updateAllBoxConnections();
+            updateStats();
+        }
+
+        function clearConnections() {
+            connections.forEach(conn => {
+                scene.remove(conn.line);
+                conn.lightBulbs.forEach(bulb => scene.remove(bulb));
+            });
+            connections.length = 0;
+            connectionLines.length = 0;
+            updateAllBoxConnections();
+            updateStats();
+        }
+
+        function showGreedyShortestEdges() {
+            clearConnections();
+
+            // Greedy algorithm: iteratively add the globally shortest edge not yet added
+            // This matches the day 8 part 1 solution approach
+            const addedEdges = new Set();
+            const n = boxes.length;
+
+            // Union-Find for tracking connected components
+            const parent = boxes.map((_, i) => i);
+            const find = (x) => parent[x] === x ? x : (parent[x] = find(parent[x]));
+            const union = (a, b) => { parent[find(a)] = find(b); };
+
+            // Add edges until all boxes are connected (n-1 edges for MST)
+            let edgesAdded = 0;
+            while (edgesAdded < n - 1) {
+                let best = { d: Infinity, i: -1, j: -1 };
+
+                // Find shortest edge not yet added
+                for (let i = 0; i < n; i++) {
+                    for (let j = i + 1; j < n; j++) {
+                        const edgeKey = `${i},${j}`;
+                        if (addedEdges.has(edgeKey)) continue;
+
+                        const d = calculateDistance(boxes[i], boxes[j]);
+                        if (d < best.d) {
+                            best = { d, i, j };
+                        }
+                    }
+                }
+
+                if (best.i === -1) break; // No more edges available
+
+                addedEdges.add(`${best.i},${best.j}`);
+                addConnection(boxes[best.i], boxes[best.j]);
+                union(best.i, best.j);
+                edgesAdded++;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('string-count').textContent = connections.length;
+            const totalLength = connections.reduce((sum, c) => sum + c.distance, 0);
+            document.getElementById('total-length').textContent = Math.round(totalLength);
+        }
+
+        // Raycaster for interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let hoveredBox = null;
+
+        // Camera controls
+        let isDragging = false;
+        let isPanning = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let spherical = { radius: 2200, theta: Math.PI / 4, phi: Math.PI / 3 };
+        let target = new THREE.Vector3(500, 400, 500);
+
+        function updateCameraPosition() {
+            camera.position.x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+            camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+            camera.position.z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+            camera.lookAt(target);
+        }
+
+        updateCameraPosition();
+
+        let clickStartTime = 0;
+        let clickStartPos = { x: 0, y: 0 };
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            clickStartTime = Date.now();
+            clickStartPos = { x: e.clientX, y: e.clientY };
+            
+            if (e.shiftKey) {
+                isPanning = true;
+            } else {
+                isDragging = true;
+            }
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        renderer.domElement.addEventListener('mouseup', (e) => {
+            const clickDuration = Date.now() - clickStartTime;
+            const clickDistance = Math.sqrt(
+                Math.pow(e.clientX - clickStartPos.x, 2) + 
+                Math.pow(e.clientY - clickStartPos.y, 2)
+            );
+            
+            // Detect click (short duration, minimal movement)
+            if (clickDuration < 300 && clickDistance < 5) {
+                handleClick(e);
+            }
+            
+            isDragging = false;
+            isPanning = false;
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            if (isDragging) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                spherical.theta -= deltaX * 0.005;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + deltaY * 0.005));
+                updateCameraPosition();
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+
+            if (isPanning) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                const right = new THREE.Vector3();
+                const up = new THREE.Vector3(0, 1, 0);
+                camera.getWorldDirection(right);
+                right.cross(up).normalize();
+                target.addScaledVector(right, -deltaX * 0.5);
+                target.y += deltaY * 0.5;
+                updateCameraPosition();
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        renderer.domElement.addEventListener('wheel', (e) => {
+            spherical.radius = Math.max(300, Math.min(3000, spherical.radius + e.deltaY));
+            updateCameraPosition();
+        });
+
+        // Touch controls for mobile
+        let touchStartTime = 0;
+        let touchStartPos = { x: 0, y: 0 };
+        let lastTouchDistance = 0;
+        let isTouchDragging = false;
+
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+
+            if (e.touches.length === 1) {
+                touchStartTime = Date.now();
+                touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                isTouchDragging = true;
+            } else if (e.touches.length === 2) {
+                // Pinch zoom start
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                isTouchDragging = false;
+            }
+        }, { passive: false });
+
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+
+            if (e.touches.length === 1 && isTouchDragging) {
+                // Single finger drag - rotate camera
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                const deltaY = e.touches[0].clientY - previousMousePosition.y;
+                spherical.theta -= deltaX * 0.008;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + deltaY * 0.008));
+                updateCameraPosition();
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+
+                // Update mouse position for raycasting
+                mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            } else if (e.touches.length === 2) {
+                // Pinch zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (lastTouchDistance > 0) {
+                    const delta = (lastTouchDistance - distance) * 3;
+                    spherical.radius = Math.max(300, Math.min(3000, spherical.radius + delta));
+                    updateCameraPosition();
+                }
+                lastTouchDistance = distance;
+            }
+        }, { passive: false });
+
+        renderer.domElement.addEventListener('touchend', (e) => {
+            const touchDuration = Date.now() - touchStartTime;
+
+            if (e.changedTouches.length === 1 && isTouchDragging) {
+                const touch = e.changedTouches[0];
+                const touchDistance = Math.sqrt(
+                    Math.pow(touch.clientX - touchStartPos.x, 2) +
+                    Math.pow(touch.clientY - touchStartPos.y, 2)
+                );
+
+                // Detect tap (short duration, minimal movement)
+                if (touchDuration < 300 && touchDistance < 15) {
+                    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                    handleTap();
+                }
+            }
+
+            isTouchDragging = false;
+            lastTouchDistance = 0;
+        });
+
+        function handleTap() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(boxes);
+
+            if (intersects.length > 0) {
+                const clickedBox = intersects[0].object;
+
+                if (firstSelectedBox === null) {
+                    firstSelectedBox = clickedBox;
+                    clickedBox.material.emissiveIntensity = 1.0;
+                } else if (firstSelectedBox === clickedBox) {
+                    // Deselect
+                    firstSelectedBox.material.emissiveIntensity = firstSelectedBox.userData.isConnected ? 0.5 : 0.1;
+                    firstSelectedBox = null;
+                } else {
+                    addConnection(firstSelectedBox, clickedBox);
+                    firstSelectedBox.material.emissiveIntensity = firstSelectedBox.userData.isConnected ? 0.5 : 0.1;
+                    firstSelectedBox = null;
+                }
+            }
+        }
+
+        function handleClick(e) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(boxes);
+            
+            if (intersects.length > 0) {
+                const clickedBox = intersects[0].object;
+                
+                if (firstSelectedBox === null) {
+                    firstSelectedBox = clickedBox;
+                    clickedBox.material.emissiveIntensity = 1.0;
+                } else if (firstSelectedBox === clickedBox) {
+                    // Deselect
+                    firstSelectedBox.material.emissiveIntensity = firstSelectedBox.userData.isConnected ? 0.5 : 0.1;
+                    firstSelectedBox = null;
+                } else {
+                    addConnection(firstSelectedBox, clickedBox);
+                    firstSelectedBox.material.emissiveIntensity = firstSelectedBox.userData.isConnected ? 0.5 : 0.1;
+                    firstSelectedBox = null;
+                }
+            }
+        }
+
+        // UI button handlers
+        document.getElementById('toggle-nearest').addEventListener('click', showGreedyShortestEdges);
+        document.getElementById('clear-connections').addEventListener('click', clearConnections);
+
+// Light snow flurry
+        const snowGeometry = new THREE.BufferGeometry();
+        const snowCount = 1500;
+        const snowPositions = new Float32Array(snowCount * 3);
+        
+        for (let i = 0; i < snowCount * 3; i += 3) {
+            snowPositions[i] = Math.random() * 2000 - 500;
+            snowPositions[i + 1] = Math.random() * 1500;
+            snowPositions[i + 2] = Math.random() * 2000 - 500;
+        }
+        
+        snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+        
+        const snowMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 5,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        const snow = new THREE.Points(snowGeometry, snowMaterial);
+        scene.add(snow);
+
+        // Animation loop
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Animate boxes
+            boxes.forEach((box, i) => {
+                // Gentle sway
+                box.rotation.y = Math.sin(time + i) * 0.1;
+                box.position.y = box.userData.y + Math.sin(time * 0.5 + i * 0.3) * 2;
+                
+                // Update wireframe and bulb positions
+                if (box.userData.wireframe) {
+                    box.userData.wireframe.position.copy(box.position);
+                    box.userData.wireframe.rotation.copy(box.rotation);
+                }
+                if (box.userData.bulb) {
+                    box.userData.bulb.position.set(box.position.x, box.position.y + 28, box.position.z);
+                    // Twinkle effect only for connected boxes
+                    if (box.userData.isConnected) {
+                        box.userData.bulb.material.opacity = 0.7 + Math.sin(time * 3 + i * 2) * 0.3;
+                    }
+                }
+            });
+
+            // Animate swing
+            const swingAngle = Math.sin(time * 1.5) * 0.4;
+            const swingRadius = 135; // Distance from pivot to seat
+            const pivotY = 185;
+            const pivotZ = 850;
+            
+            swingSeat.position.z = pivotZ + Math.sin(swingAngle) * swingRadius;
+            swingSeat.position.y = pivotY - Math.cos(swingAngle) * swingRadius + 2;
+            swingSeat.rotation.x = swingAngle;
+            
+            // Update chains
+            chain1.geometry.setFromPoints([
+                new THREE.Vector3(180, pivotY, pivotZ),
+                new THREE.Vector3(swingSeat.position.x - 20, swingSeat.position.y + 2, swingSeat.position.z)
+            ]);
+            chain2.geometry.setFromPoints([
+                new THREE.Vector3(220, pivotY, pivotZ),
+                new THREE.Vector3(swingSeat.position.x + 20, swingSeat.position.y + 2, swingSeat.position.z)
+            ]);
+
+            // Animate light string bulbs
+            connectionLines.forEach((conn, ci) => {
+                conn.lightBulbs.forEach((bulb, bi) => {
+                    bulb.material.opacity = 0.7 + Math.sin(time * 4 + ci + bi * 0.5) * 0.3;
+                });
+            });
+
+            // Animate snow
+            const snowPos = snow.geometry.attributes.position.array;
+            for (let i = 0; i < snowCount * 3; i += 3) {
+                snowPos[i + 1] -= 0.8 + Math.sin(i) * 0.3; // Varying fall speed
+                if (snowPos[i + 1] < 0) {
+                    snowPos[i + 1] = 1500;
+                }
+                // Gentle horizontal drift
+                snowPos[i] += Math.sin(time + i * 0.1) * 0.15;
+                snowPos[i + 2] += Math.cos(time + i * 0.1) * 0.1;
+            }
+            snow.geometry.attributes.position.needsUpdate = true;
+
+            // Raycasting for hover
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(boxes);
+
+            if (intersects.length > 0) {
+                const newHovered = intersects[0].object;
+                if (newHovered !== hoveredBox) {
+                    if (hoveredBox && hoveredBox !== firstSelectedBox) {
+                        // Reset to appropriate emissive intensity based on connection status
+                        hoveredBox.material.emissiveIntensity = hoveredBox.userData.isConnected ? 0.5 : 0.1;
+                    }
+                    hoveredBox = newHovered;
+                    if (hoveredBox !== firstSelectedBox) {
+                        hoveredBox.material.emissiveIntensity = hoveredBox.userData.isConnected ? 0.8 : 0.3;
+                    }
+                }
+            } else {
+                if (hoveredBox && hoveredBox !== firstSelectedBox) {
+                    hoveredBox.material.emissiveIntensity = hoveredBox.userData.isConnected ? 0.5 : 0.1;
+                    hoveredBox = null;
+                }
+            }
+
+            // Animate colored lights
+            redLight.position.x = 200 + Math.sin(time * 0.3) * 200;
+            greenLight.position.z = 800 + Math.cos(time * 0.3) * 200;
+            goldLight.intensity = 0.8 + Math.sin(time * 2) * 0.2;
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

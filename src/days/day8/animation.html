@@ -1132,11 +1132,112 @@
         const snow = new THREE.Points(snowGeometry, snowMaterial);
         scene.add(snow);
 
+        // Elves running around the playground
+        const elfTextures = {
+            front: new THREE.TextureLoader().load('../day4/elve_front.png'),
+            back: new THREE.TextureLoader().load('../day4/elve_back.png'),
+            left: new THREE.TextureLoader().load('../day4/elve_left.png'),
+            right: new THREE.TextureLoader().load('../day4/elve_right.png')
+        };
+
+        // Make textures crisp
+        Object.values(elfTextures).forEach(tex => {
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
+        });
+
+        const elves = [];
+        const elfCount = 12;
+        const elfSize = 60;
+        const playgroundBounds = { minX: -150, maxX: 1150, minZ: -150, maxZ: 1150 };
+
+        for (let i = 0; i < elfCount; i++) {
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: elfTextures.front,
+                transparent: true,
+                alphaTest: 0.5
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(elfSize, elfSize, 1);
+
+            // Random starting position on the playground
+            const x = playgroundBounds.minX + Math.random() * (playgroundBounds.maxX - playgroundBounds.minX);
+            const z = playgroundBounds.minZ + Math.random() * (playgroundBounds.maxZ - playgroundBounds.minZ);
+            sprite.position.set(x, elfSize / 2 + 2, z);
+
+            // Each elf has its own movement data
+            sprite.userData = {
+                targetX: x,
+                targetZ: z,
+                speed: 120 + Math.random() * 80,
+                waitTime: 0,
+                direction: 'front'
+            };
+
+            scene.add(sprite);
+            elves.push(sprite);
+        }
+
+        function updateElves(deltaTime) {
+            elves.forEach(elf => {
+                const data = elf.userData;
+
+                // If waiting, count down
+                if (data.waitTime > 0) {
+                    data.waitTime -= deltaTime;
+                    return;
+                }
+
+                // Calculate distance to target
+                const dx = data.targetX - elf.position.x;
+                const dz = data.targetZ - elf.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                if (dist < 5) {
+                    // Reached target, pick new one and wait a bit
+                    data.targetX = playgroundBounds.minX + Math.random() * (playgroundBounds.maxX - playgroundBounds.minX);
+                    data.targetZ = playgroundBounds.minZ + Math.random() * (playgroundBounds.maxZ - playgroundBounds.minZ);
+                    data.waitTime = 0.3 + Math.random() * 1.2;
+                    data.speed = 120 + Math.random() * 80;
+                } else {
+                    // Move towards target
+                    const moveX = (dx / dist) * data.speed * deltaTime;
+                    const moveZ = (dz / dist) * data.speed * deltaTime;
+                    elf.position.x += moveX;
+                    elf.position.z += moveZ;
+
+                    // Update sprite direction based on movement
+                    let newDirection;
+                    if (Math.abs(dx) > Math.abs(dz)) {
+                        newDirection = dx > 0 ? 'right' : 'left';
+                    } else {
+                        newDirection = dz > 0 ? 'front' : 'back';
+                    }
+
+                    if (newDirection !== data.direction) {
+                        data.direction = newDirection;
+                        elf.material.map = elfTextures[newDirection];
+                        elf.material.needsUpdate = true;
+                    }
+
+                    // Add a little bounce while walking
+                    elf.position.y = elfSize / 2 + 2 + Math.abs(Math.sin(time * 12)) * 3;
+                }
+            });
+        }
+
         // Animation loop
         let time = 0;
+        let lastTime = performance.now();
         function animate() {
             requestAnimationFrame(animate);
+            const now = performance.now();
+            const deltaTime = (now - lastTime) / 1000;
+            lastTime = now;
             time += 0.01;
+
+            // Animate elves
+            updateElves(deltaTime);
 
             // Animate boxes
             boxes.forEach((box, i) => {

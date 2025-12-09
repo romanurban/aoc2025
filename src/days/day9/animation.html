@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 9: Movie Theater - Part 2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: url('day9_bg.png') center center / cover no-repeat;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #animPanel {
+            position: absolute;
+            left: 690px;
+            top: 175px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @media (max-width: 1200px) {
+            #animPanel {
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        @media (max-width: 600px) {
+            #animPanel {
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%) scale(0.4);
+            }
+        }
+
+        @media (min-width: 601px) and (max-width: 900px) {
+            #animPanel {
+                transform: translate(-50%, -50%) scale(0.6);
+            }
+        }
+
+        @media (min-width: 901px) and (max-width: 1200px) {
+            #animPanel {
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+
+        #startBtn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #22c55e;
+            color: white;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        #startBtn:hover { background: #16a34a; transform: scale(1.05); }
+        #startBtn.hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+
+        .grid { display: grid; gap: 1px; grid-template-columns: repeat(14, 76px); }
+
+        .cell {
+            width: 76px;
+            height: 62px;
+            border-radius: 3px;
+            transition: all 0.1s;
+        }
+        .cell.empty { background: #475569; }
+        .cell.red { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.7); }
+        .cell.boundary { background: #16a34a; }
+        .cell.interior { background: #22c55e; }
+        .cell.rect { background: #facc15; box-shadow: 0 0 12px rgba(250, 204, 21, 0.8); }
+    </style>
+</head>
+<body>
+    <div id="animPanel">
+        <button id="startBtn">Start Animation</button>
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <script>
+        const EXAMPLE_INPUT = `7,1\n11,1\n11,7\n9,7\n9,5\n2,5\n2,3\n7,3`;
+        const GRID_WIDTH = 14, GRID_HEIGHT = 9;
+
+        const redTiles = EXAMPLE_INPUT.split('\n').map(l => l.split(',').map(Number));
+
+        const segments = [];
+        for (let i = 0; i < redTiles.length; i++) {
+            const [x1, y1] = redTiles[i];
+            const [x2, y2] = redTiles[(i + 1) % redTiles.length];
+            segments.push({ x1, y1, x2, y2, vertical: x1 === x2 });
+        }
+
+        const boundarySet = new Set();
+        for (const s of segments) {
+            if (s.vertical) {
+                for (let y = Math.min(s.y1, s.y2); y <= Math.max(s.y1, s.y2); y++) boundarySet.add(`${s.x1},${y}`);
+            } else {
+                for (let x = Math.min(s.x1, s.x2); x <= Math.max(s.x1, s.x2); x++) boundarySet.add(`${x},${s.y1}`);
+            }
+        }
+
+        const boundaryPoints = [];
+        for (const s of segments) {
+            if (s.vertical) {
+                for (let y = Math.min(s.y1, s.y2); y <= Math.max(s.y1, s.y2); y++) if (y !== s.y1) boundaryPoints.push({ x: s.x1, y });
+            } else {
+                for (let x = Math.min(s.x1, s.x2); x <= Math.max(s.x1, s.x2); x++) if (x !== s.x1) boundaryPoints.push({ x, y: s.y1 });
+            }
+        }
+
+        function isInside(px, py) {
+            let crossings = 0;
+            for (const s of segments) {
+                if (s.vertical && s.x1 < px) {
+                    if (py >= Math.min(s.y1, s.y2) && py < Math.max(s.y1, s.y2)) crossings++;
+                }
+            }
+            return crossings % 2 === 1;
+        }
+
+        const interiorPoints = [];
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (!boundarySet.has(`${x},${y}`) && isInside(x, y)) interiorPoints.push({ x, y });
+            }
+        }
+
+        function isValid(px, py) { return boundarySet.has(`${px},${py}`) || isInside(px, py); }
+
+        function rectangleIsValid(ax, ay, bx, by) {
+            const minX = Math.min(ax, bx), maxX = Math.max(ax, bx);
+            const minY = Math.min(ay, by), maxY = Math.max(ay, by);
+            if (!isValid(minX, minY) || !isValid(maxX, minY) || !isValid(minX, maxY) || !isValid(maxX, maxY)) return false;
+            for (const s of segments) {
+                if (s.vertical && s.x1 > minX && s.x1 < maxX && Math.max(s.y1, s.y2) > minY && Math.min(s.y1, s.y2) < maxY) return false;
+                if (!s.vertical && s.y1 > minY && s.y1 < maxY && Math.max(s.x1, s.x2) > minX && Math.min(s.x1, s.x2) < maxX) return false;
+            }
+            return true;
+        }
+
+        const rectPairs = [];
+        for (let i = 0; i < redTiles.length; i++) {
+            for (let j = i + 1; j < redTiles.length; j++) {
+                const [x1, y1] = redTiles[i], [x2, y2] = redTiles[j];
+                if (x1 !== x2 && y1 !== y2) {
+                    const area = (Math.abs(x1 - x2) + 1) * (Math.abs(y1 - y2) + 1);
+                    rectPairs.push({ x1, y1, x2, y2, area, valid: rectangleIsValid(x1, y1, x2, y2) });
+                }
+            }
+        }
+        rectPairs.sort((a, b) => b.area - a.area);
+
+        const grid = document.getElementById('grid');
+        const startBtn = document.getElementById('startBtn');
+
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell empty';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                grid.appendChild(cell);
+            }
+        }
+
+        function getCell(x, y) { return grid.querySelector(`[data-x="${x}"][data-y="${y}"]`); }
+        function isRed(x, y) { return redTiles.some(([rx, ry]) => rx === x && ry === y); }
+
+        function render(state) {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const cell = getCell(x, y);
+                    cell.className = 'cell';
+
+                    if (state.rect && x >= Math.min(state.rect.x1, state.rect.x2) && x <= Math.max(state.rect.x1, state.rect.x2) &&
+                        y >= Math.min(state.rect.y1, state.rect.y2) && y <= Math.max(state.rect.y1, state.rect.y2)) {
+                        cell.classList.add('rect');
+                    } else if (isRed(x, y)) {
+                        cell.classList.add('red');
+                    } else if (state.interior.has(`${x},${y}`)) {
+                        cell.classList.add('interior');
+                    } else if (state.boundary.has(`${x},${y}`)) {
+                        cell.classList.add('boundary');
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                }
+            }
+        }
+
+        async function animate() {
+            startBtn.classList.add('hidden');
+            const state = { boundary: new Set(), interior: new Set(), rect: null };
+
+            render(state);
+            await sleep(500);
+
+            for (const p of boundaryPoints) {
+                state.boundary.add(`${p.x},${p.y}`);
+                render(state);
+                await sleep(40);
+            }
+            await sleep(300);
+
+            for (let i = 0; i < interiorPoints.length; i += 2) {
+                for (let j = i; j < Math.min(i + 2, interiorPoints.length); j++) {
+                    state.interior.add(`${interiorPoints[j].x},${interiorPoints[j].y}`);
+                }
+                render(state);
+                await sleep(30);
+            }
+            await sleep(500);
+
+            let bestRect = null;
+            for (const rect of rectPairs) {
+                state.rect = rect;
+                render(state);
+                await sleep(150);
+                if (rect.valid && (!bestRect || rect.area > bestRect.area)) bestRect = rect;
+            }
+
+            state.rect = bestRect;
+            render(state);
+            await sleep(2000);
+
+            startBtn.classList.remove('hidden');
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        startBtn.addEventListener('click', animate);
+        render({ boundary: new Set(), interior: new Set(), rect: null });
+    </script>
+</body>
+</html>

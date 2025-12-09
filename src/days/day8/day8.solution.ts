@@ -28,7 +28,10 @@ export class Day8Solution implements DaySolution {
     }
 
     const sizes = new Map<number, number>();
-    for (let i = 0; i < n; i++) sizes.setinit(find(i), (sizes.get(find(i)) || 0) + 1);
+    for (let i = 0; i < n; i++) {
+      const root = find(i);
+      sizes.set(root, (sizes.get(root) || 0) + 1);
+    }
     const sorted = [...sizes.values()].sort((a, b) => b - a);
     return sorted[0] * sorted[1] * sorted[2];
   }

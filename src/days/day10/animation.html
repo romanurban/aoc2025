@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 10: Factory Machine Initialization</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #1a1a2e;
+            --christmas-red: #dc2626;
+            --christmas-green: #16a34a;
+            --christmas-gold: #fbbf24;
+            --led-on: #22c55e;
+            --led-off: #374151;
+            --led-glow: rgba(34, 197, 94, 0.6);
+            --machine-body: #374151;
+            --machine-accent: #4b5563;
+            --button-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: white;
+            background: #0f172a;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(160deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.4) 40%, rgba(15, 23, 42, 0.75) 100%),
+                url('./day10_bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            z-index: -2;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(50% 50% at 50% 20%, rgba(30, 64, 175, 0.2), transparent),
+                        linear-gradient(120deg, rgba(220, 38, 38, 0.12), transparent 55%),
+                        linear-gradient(240deg, rgba(22, 163, 74, 0.14), transparent 50%);
+            z-index: -1;
+        }
+
+        .snow-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+            background:
+                radial-gradient(white 1px, transparent 1px),
+                radial-gradient(white 1px, transparent 1px);
+            background-size: 100px 100px, 150px 150px;
+            background-position: 0 0, 50px 50px;
+            animation: snow-fall 25s linear infinite;
+            opacity: 0.08;
+        }
+
+        @keyframes snow-fall {
+            0% { background-position: 0 0, 50px 50px; }
+            100% { background-position: 80px 160px, 130px 210px; }
+        }
+
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 18px min(6vw, 32px);
+            background: linear-gradient(to bottom, rgba(26,26,46,0.95) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            font-family: 'Mountains of Christmas', cursive;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--christmas-gold);
+            text-shadow: 0 0 20px rgba(251,191,36,0.5);
+        }
+
+        .logo .star { animation: twinkle 1.5s ease-in-out infinite; }
+        @keyframes twinkle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .stats {
+            font-size: 12px;
+            text-align: right;
+            background: rgba(26,26,46,0.9);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(251,191,36,0.3);
+        }
+
+        .stats .label { color: rgba(255,255,255,0.7); }
+        .stats .value { color: var(--christmas-gold); font-weight: 700; }
+        .stats .value.green { color: var(--christmas-green); }
+
+        #mainPanel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 20px;
+            width: min(1000px, 90vw);
+            margin: 120px auto 60px;
+            padding: 10px 0 30px;
+        }
+
+        @media (max-width: 900px) {
+            #mainPanel { margin: 110px auto 55px; }
+        }
+
+        @media (max-width: 700px) {
+            #mainPanel { margin: 100px auto 45px; gap: 16px; }
+        }
+
+        @media (max-width: 500px) {
+            #mainPanel { margin: 92px auto 36px; gap: 14px; }
+        }
+
+        @media (max-width: 900px) {
+            body::before { background-position: center top; }
+        }
+
+        @media (max-width: 700px) {
+            body::before { background-attachment: scroll; }
+        }
+
+        #startBtn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--christmas-green), #15803d);
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+            align-self: center;
+            min-width: 240px;
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.6);
+        }
+
+        #startBtn.hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+
+        @media (max-width: 520px) {
+            #startBtn {
+                width: 100%;
+                min-width: 0;
+                max-width: 360px;
+                font-size: 15px;
+            }
+        }
+
+        .machines-container {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            width: 100%;
+        }
+
+        .machine {
+            background: linear-gradient(150deg, rgba(45,55,72,0.9), rgba(26,32,44,0.85));
+            border-radius: 15px;
+            padding: 18px 18px;
+            box-shadow:
+                0 8px 22px rgba(0,0,0,0.38),
+                inset 0 1px 0 rgba(255,255,255,0.06);
+            border: 1px solid rgba(74,85,104,0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            max-width: 820px;
+            min-width: 0;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .machine::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--christmas-red), var(--christmas-green), var(--christmas-gold));
+        }
+
+        .machine-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .machine.active {
+            border-color: var(--christmas-gold);
+            box-shadow:
+                0 10px 30px rgba(0,0,0,0.5),
+                0 0 30px rgba(251,191,36,0.3);
+        }
+
+        .machine.solved .leds-row {
+            animation: celebrate 0.5s ease-in-out 3;
+        }
+
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .indicator-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .section-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 70px;
+            flex: 0 0 auto;
+        }
+
+        .leds-row {
+            display: flex;
+            gap: 6px;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #2d3748;
+            flex: 1 1 220px;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .led {
+            width: clamp(20px, 4vw, 26px);
+            height: clamp(20px, 4vw, 26px);
+            border-radius: 50%;
+            background: var(--led-off);
+            border: 2px solid #1f2937;
+            transition: all 0.15s ease-out;
+            position: relative;
+        }
+
+        .led.on {
+            background: var(--led-on);
+            box-shadow: 0 0 15px var(--led-glow), 0 0 30px var(--led-glow);
+            border-color: #166534;
+        }
+
+        .led.target-on::after {
+            content: '';
+            position: absolute;
+            top: -6px; left: -6px; right: -6px; bottom: -6px;
+            border-radius: 50%;
+            border: 2px dashed var(--christmas-gold);
+            opacity: 0.6;
+        }
+
+        .led.target-off::after {
+            content: '';
+            position: absolute;
+            top: -6px; left: -6px; right: -6px; bottom: -6px;
+            border-radius: 50%;
+            border: 2px dashed #6b7280;
+            opacity: 0.4;
+        }
+
+        .buttons-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            width: 100%;
+        }
+
+        .button {
+            background: linear-gradient(145deg, #ef4444, #b91c1c);
+            color: white;
+            font-size: 10px;
+            font-family: inherit;
+            padding: 7px 10px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            flex: 0 1 95px;
+        }
+
+        .button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 12px rgba(239,68,68,0.4);
+        }
+
+        .button.pressed {
+            transform: translateY(2px) scale(0.95);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            background: linear-gradient(145deg, #b91c1c, #991b1b);
+        }
+
+        .button.highlight {
+            background: linear-gradient(145deg, var(--christmas-gold), #d97706);
+            animation: pulse-btn 0.3s ease-out;
+        }
+
+        @keyframes pulse-btn {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .result-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--christmas-green);
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s;
+        }
+
+        .machine.solved .result-badge {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .total-display {
+            background: rgba(26,26,46,0.95);
+            padding: 12px 22px;
+            border-radius: 10px;
+            border: 1px solid var(--christmas-gold);
+            text-align: center;
+            box-shadow: 0 0 30px rgba(251,191,36,0.2);
+            align-self: center;
+            width: min(380px, 100%);
+        }
+
+        .total-display .label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .total-display .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--christmas-gold);
+        }
+
+        .corner-decoration {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            z-index: 40;
+            opacity: 0.6;
+        }
+
+        .corner-decoration.tl {
+            top: 8px; left: 8px;
+            border-top: 3px solid var(--christmas-red);
+            border-left: 3px solid var(--christmas-red);
+            border-top-left-radius: 10px;
+        }
+
+        .corner-decoration.tr {
+            top: 8px; right: 8px;
+            border-top: 3px solid var(--christmas-green);
+            border-right: 3px solid var(--christmas-green);
+            border-top-right-radius: 10px;
+        }
+
+        .corner-decoration.bl {
+            bottom: 8px; left: 8px;
+            border-bottom: 3px solid var(--christmas-green);
+            border-left: 3px solid var(--christmas-green);
+            border-bottom-left-radius: 10px;
+        }
+
+        .corner-decoration.br {
+            bottom: 8px; right: 8px;
+            border-bottom: 3px solid var(--christmas-red);
+            border-right: 3px solid var(--christmas-red);
+            border-bottom-right-radius: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .logo { font-size: 22px; }
+            .machine { padding: 16px; }
+        }
+
+        @media (max-width: 760px) {
+            .header { align-items: flex-start; flex-direction: column; gap: 10px; }
+            .stats { width: 100%; text-align: left; }
+            .indicator-section { align-items: flex-start; }
+            .section-label { width: 100%; }
+            .leds-row { justify-content: center; }
+            .buttons-row { justify-content: center; }
+        }
+
+        @media (max-width: 520px) {
+            .logo { font-size: 20px; }
+            .stats { font-size: 11px; }
+            .machine { padding: 14px 12px; gap: 12px; }
+            .leds-row { padding: 9px 10px; gap: 6px; }
+            .button { flex: 1 1 110px; font-size: 10px; padding: 7px 10px; }
+            .corner-decoration { opacity: 0.35; }
+        }
+    </style>
+</head>
+<body>
+    <div class="snow-overlay"></div>
+
+    <div class="corner-decoration tl"></div>
+    <div class="corner-decoration tr"></div>
+    <div class="corner-decoration bl"></div>
+    <div class="corner-decoration br"></div>
+
+    <div class="header">
+        <div class="logo"><span class="star">&#9733;</span> Factory Initialization <span class="star">&#9733;</span></div>
+        <div class="stats">
+            <span class="label">MACHINES:</span> <span class="value">3</span><br>
+            <span class="label">TOTAL PRESSES:</span> <span class="value green" id="totalPresses">0</span>
+        </div>
+    </div>
+
+    <div id="mainPanel">
+        <button id="startBtn">Start Initialization</button>
+        <div class="machines-container" id="machinesContainer"></div>
+        <div class="total-display" id="totalDisplay" style="display: none;">
+            <div class="label">Total Button Presses</div>
+            <div class="value" id="totalValue">0</div>
+        </div>
+    </div>
+
+    <script>
+        const EXAMPLE_INPUT = `[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
+[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}
+[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}`;
+
+        // Parse input
+        function parseInput(input) {
+            return input.split('\n').map(line => {
+                const indicator = line.split(']')[0] + ']';
+                const buttonsStr = line.split(']')[1].trim().split('{')[0].trim();
+
+                const target = indicator.slice(1, -1).split('').map(ch => ch === '#' ? 1 : 0);
+                const buttons = [];
+                const matches = buttonsStr.matchAll(/\(([^)]+)\)/g);
+                for (const match of matches) {
+                    buttons.push(match[1].split(',').map(n => parseInt(n.trim())));
+                }
+
+                return { target, buttons };
+            });
+        }
+
+        // BFS to find minimum presses and the solution path
+        function solve(buttons, target) {
+            const targetState = target.reduce((acc, bit, i) => acc | (bit << i), 0);
+            const initialState = 0;
+
+            if (initialState === targetState) return { presses: 0, path: [] };
+
+            const visited = new Map();
+            const queue = [{ state: initialState, presses: 0, path: [] }];
+            visited.set(initialState, 0);
+
+            while (queue.length > 0) {
+                const { state, presses, path } = queue.shift();
+
+                for (let i = 0; i < buttons.length; i++) {
+                    let newState = state;
+                    for (const pos of buttons[i]) {
+                        newState ^= (1 << pos);
+                    }
+
+                    if (newState === targetState) {
+                        return { presses: presses + 1, path: [...path, i] };
+                    }
+
+                    if (!visited.has(newState)) {
+                        visited.set(newState, presses + 1);
+                        queue.push({ state: newState, presses: presses + 1, path: [...path, i] });
+                    }
+                }
+            }
+
+            return { presses: -1, path: [] };
+        }
+
+        const machines = parseInput(EXAMPLE_INPUT);
+        const solutions = machines.map(m => solve(m.buttons, m.target));
+
+        const container = document.getElementById('machinesContainer');
+        const startBtn = document.getElementById('startBtn');
+        const totalDisplay = document.getElementById('totalDisplay');
+        const totalValue = document.getElementById('totalValue');
+        const totalPressesEl = document.getElementById('totalPresses');
+
+        // Create machine UI elements
+        machines.forEach((machine, mIdx) => {
+            const machineEl = document.createElement('div');
+            machineEl.className = 'machine';
+            machineEl.id = `machine-${mIdx}`;
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'machine-label';
+            labelEl.textContent = `Machine ${mIdx + 1}`;
+            machineEl.appendChild(labelEl);
+
+            // Current state LEDs
+            const currentSection = document.createElement('div');
+            currentSection.className = 'indicator-section';
+
+            const currentLabel = document.createElement('div');
+            currentLabel.className = 'section-label';
+            currentLabel.textContent = 'Current';
+            currentSection.appendChild(currentLabel);
+
+            const ledsRow = document.createElement('div');
+            ledsRow.className = 'leds-row';
+            ledsRow.id = `leds-${mIdx}`;
+
+            machine.target.forEach((t, lIdx) => {
+                const led = document.createElement('div');
+                led.className = `led ${t ? 'target-on' : 'target-off'}`;
+                led.id = `led-${mIdx}-${lIdx}`;
+                ledsRow.appendChild(led);
+            });
+            currentSection.appendChild(ledsRow);
+            machineEl.appendChild(currentSection);
+
+            // Target indicator
+            const targetSection = document.createElement('div');
+            targetSection.className = 'indicator-section';
+
+            const targetLabel = document.createElement('div');
+            targetLabel.className = 'section-label';
+            targetLabel.textContent = 'Target';
+            targetSection.appendChild(targetLabel);
+
+            const targetRow = document.createElement('div');
+            targetRow.className = 'leds-row';
+            targetRow.style.opacity = '0.6';
+
+            machine.target.forEach(t => {
+                const led = document.createElement('div');
+                led.className = `led ${t ? 'on' : ''}`;
+                targetRow.appendChild(led);
+            });
+            targetSection.appendChild(targetRow);
+            machineEl.appendChild(targetSection);
+
+            // Buttons
+            const buttonsSection = document.createElement('div');
+            buttonsSection.className = 'indicator-section';
+
+            const btnsLabel = document.createElement('div');
+            btnsLabel.className = 'section-label';
+            btnsLabel.textContent = 'Buttons';
+            buttonsSection.appendChild(btnsLabel);
+
+            const buttonsRow = document.createElement('div');
+            buttonsRow.className = 'buttons-row';
+            buttonsRow.id = `buttons-${mIdx}`;
+
+            machine.buttons.forEach((btn, bIdx) => {
+                const btnEl = document.createElement('button');
+                btnEl.className = 'button';
+                btnEl.id = `btn-${mIdx}-${bIdx}`;
+                btnEl.textContent = `(${btn.join(',')})`;
+                buttonsRow.appendChild(btnEl);
+            });
+            buttonsSection.appendChild(buttonsRow);
+            machineEl.appendChild(buttonsSection);
+
+            // Result badge
+            const badge = document.createElement('div');
+            badge.className = 'result-badge';
+            badge.id = `badge-${mIdx}`;
+            badge.textContent = `${solutions[mIdx].presses} presses`;
+            machineEl.appendChild(badge);
+
+            container.appendChild(machineEl);
+        });
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        // Animation
+        async function animate() {
+            startBtn.classList.add('hidden');
+            let runningTotal = 0;
+
+            // Reset all LEDs
+            machines.forEach((machine, mIdx) => {
+                machine.target.forEach((t, lIdx) => {
+                    const led = document.getElementById(`led-${mIdx}-${lIdx}`);
+                    led.classList.remove('on');
+                });
+                document.getElementById(`machine-${mIdx}`).classList.remove('active', 'solved');
+            });
+
+            totalPressesEl.textContent = '0';
+            await sleep(500);
+
+            for (let mIdx = 0; mIdx < machines.length; mIdx++) {
+                const machine = machines[mIdx];
+                const solution = solutions[mIdx];
+                const machineEl = document.getElementById(`machine-${mIdx}`);
+
+                machineEl.classList.add('active');
+                await sleep(400);
+
+                // Current LED state (as bitmask)
+                let currentState = 0;
+
+                // Animate each button press in the solution
+                for (const btnIdx of solution.path) {
+                    const btnEl = document.getElementById(`btn-${mIdx}-${btnIdx}`);
+                    const toggles = machine.buttons[btnIdx];
+
+                    // Highlight and press button
+                    btnEl.classList.add('highlight', 'pressed');
+                    await sleep(150);
+
+                    // Toggle the LEDs
+                    for (const pos of toggles) {
+                        currentState ^= (1 << pos);
+                        const led = document.getElementById(`led-${mIdx}-${pos}`);
+                        if (currentState & (1 << pos)) {
+                            led.classList.add('on');
+                        } else {
+                            led.classList.remove('on');
+                        }
+                    }
+
+                    await sleep(250);
+                    btnEl.classList.remove('pressed');
+                    await sleep(150);
+                    btnEl.classList.remove('highlight');
+
+                    runningTotal++;
+                    totalPressesEl.textContent = runningTotal;
+                }
+
+                machineEl.classList.remove('active');
+                machineEl.classList.add('solved');
+                await sleep(600);
+            }
+
+            // Show total
+            totalDisplay.style.display = 'block';
+            totalValue.textContent = runningTotal;
+
+            await sleep(2000);
+            startBtn.classList.remove('hidden');
+        }
+
+        startBtn.addEventListener('click', animate);
+    </script>
+</body>
+</html>

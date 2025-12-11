@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reactor Path Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0e17;
+      --panel-bg: rgba(10, 14, 23, 0.75);
+      --cyan-glow: #00f7ff;
+      --cyan-dim: #0a4a4f;
+      --orange-glow: #ff6b35;
+      --green-glow: #00ff88;
+      --purple-glow: #c77dff;
+      --text-primary: #e0f7ff;
+      --text-dim: #5a7a8a;
+      --border-glow: rgba(0, 247, 255, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Background image */
+    .bg-image {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('day11_bg.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    @media (max-width: 768px) {
+      .bg-image {
+        background-position: 60% center;
+        opacity: 0.35;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .bg-image {
+        background-position: 65% center;
+        opacity: 0.3;
+      }
+    }
+
+    /* Animated background grid */
+    .bg-grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 247, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 247, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: gridPulse 4s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @media (max-width: 480px) {
+      .bg-grid {
+        background-size: 30px 30px;
+      }
+    }
+
+    @keyframes gridPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    /* Scanline effect */
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* Full screen canvas */
+    .canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .particle-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* Overlay Controls */
+    .overlay-controls {
+      position: fixed;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      z-index: 100;
+      background: var(--panel-bg);
+      padding: 12px 20px;
+      border: 1px solid var(--border-glow);
+      border-radius: 50px;
+      backdrop-filter: blur(15px);
+    }
+
+    @media (max-width: 480px) {
+      .overlay-controls {
+        top: 15px;
+        gap: 8px;
+        padding: 8px 12px;
+      }
+      
+      .mode-btn {
+        font-size: 0.6rem;
+        padding: 8px 12px;
+        letter-spacing: 1px;
+      }
+      
+      .start-btn {
+        font-size: 0.6rem;
+        padding: 8px 14px;
+        letter-spacing: 1px;
+      }
+      
+      .divider {
+        height: 20px;
+      }
+      
+      .toast {
+        font-size: 0.7rem;
+        padding: 10px 15px;
+        top: 70px;
+      }
+    }
+
+    @media (max-width: 768px) and (min-width: 481px) {
+      .overlay-controls {
+        top: 20px;
+        gap: 10px;
+        padding: 10px 15px;
+      }
+      
+      .mode-btn {
+        font-size: 0.65rem;
+        padding: 8px 15px;
+      }
+      
+      .start-btn {
+        font-size: 0.65rem;
+        padding: 8px 18px;
+      }
+    }
+
+    .mode-btn {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      padding: 10px 20px;
+      border: 1px solid var(--cyan-dim);
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+      border-radius: 25px;
+    }
+
+    .mode-btn:hover {
+      border-color: var(--cyan-glow);
+      color: var(--cyan-glow);
+      box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+    }
+
+    .mode-btn.active {
+      background: rgba(0, 247, 255, 0.15);
+      border-color: var(--cyan-glow);
+      color: var(--cyan-glow);
+      box-shadow: 0 0 25px rgba(0, 247, 255, 0.4);
+    }
+
+    .divider {
+      width: 1px;
+      height: 30px;
+      background: var(--border-glow);
+    }
+
+    .start-btn {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      padding: 10px 25px;
+      border: 1px solid var(--orange-glow);
+      background: rgba(255, 107, 53, 0.15);
+      color: var(--orange-glow);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+      border-radius: 25px;
+    }
+
+    .start-btn:hover:not(:disabled) {
+      background: rgba(255, 107, 53, 0.3);
+      box-shadow: 0 0 25px rgba(255, 107, 53, 0.5);
+    }
+
+    .start-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .start-btn.running {
+      border-color: var(--green-glow);
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--green-glow);
+    }
+
+    /* Subtle title watermark */
+    .title-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0.06;
+    }
+
+    .title-overlay h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 8vw;
+      font-weight: 900;
+      letter-spacing: 2vw;
+      text-transform: uppercase;
+      color: var(--cyan-glow);
+    }
+
+    @media (max-width: 480px) {
+      .title-overlay h1 {
+        font-size: 12vw;
+        letter-spacing: 1vw;
+      }
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--panel-bg);
+      border: 1px solid var(--green-glow);
+      border-radius: 8px;
+      padding: 15px 30px;
+      color: var(--green-glow);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      opacity: 0;
+      transition: all 0.5s ease;
+      z-index: 1001;
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+      pointer-events: none;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .toast {
+        top: 70px;
+        font-size: 0.7rem;
+        padding: 10px 15px;
+        letter-spacing: 1px;
+      }
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-image"></div>
+  <div class="bg-grid"></div>
+  <div class="scanlines"></div>
+
+  <div class="title-overlay">
+    <h1>Reactor</h1>
+  </div>
+
+  <div class="canvas-container">
+    <canvas id="graphCanvas"></canvas>
+    <canvas id="particleCanvas" class="particle-canvas"></canvas>
+  </div>
+
+  <!-- Minimal overlay controls -->
+  <div class="overlay-controls">
+    <button class="mode-btn active" data-mode="part1">Part I</button>
+    <button class="mode-btn" data-mode="part2">Part II</button>
+    <div class="divider"></div>
+    <button class="start-btn" id="startBtn">▶ START</button>
+  </div>
+
+
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============================================
+    // REACTOR PATH ANALYZER - VISUALIZATION ENGINE
+    // ============================================
+
+    const EXAMPLE_PART1 = `aaa: you hhh
+you: bbb ccc
+bbb: ddd eee
+ccc: ddd eee fff
+ddd: ggg
+eee: out
+fff: out
+ggg: out
+hhh: ccc fff iii
+iii: out`;
+
+    const EXAMPLE_PART2 = `svr: aaa bbb
+aaa: fft
+fft: ccc
+bbb: tty
+tty: ccc
+ccc: ddd eee
+ddd: hub
+hub: fff
+eee: dac
+dac: fff
+fff: ggg hhh
+ggg: out
+hhh: out`;
+
+    // State
+    let graph = {};
+    let nodePositions = {};
+    let currentMode = 'part1';
+    let isRunning = false;
+    let animationSpeed = 250;
+    let foundPaths = [];
+    let validPaths = [];
+    let currentPath = [];
+    let particles = [];
+
+    // Responsive sizing
+    let nodeRadius = 24;
+    let nodeRadiusCurrent = 30;
+    let arrowSize = 10;
+    let arrowSizeHighlight = 14;
+    let arrowDist = 25;
+    let fontSize = 13;
+    let edgeCurve = 30;
+    let padding = 150;
+
+    function updateResponsiveSizes() {
+      const width = window.innerWidth;
+      
+      if (width < 480) {
+        // Small mobile
+        nodeRadius = 14;
+        nodeRadiusCurrent = 18;
+        arrowSize = 6;
+        arrowSizeHighlight = 8;
+        arrowDist = 16;
+        fontSize = 9;
+        edgeCurve = 15;
+        padding = 60;
+        animationSpeed = 180;
+      } else if (width < 768) {
+        // Mobile / small tablet
+        nodeRadius = 18;
+        nodeRadiusCurrent = 22;
+        arrowSize = 7;
+        arrowSizeHighlight = 10;
+        arrowDist = 18;
+        fontSize = 10;
+        edgeCurve = 20;
+        padding = 80;
+        animationSpeed = 200;
+      } else if (width < 1024) {
+        // Tablet
+        nodeRadius = 20;
+        nodeRadiusCurrent = 25;
+        arrowSize = 8;
+        arrowSizeHighlight = 12;
+        arrowDist = 20;
+        fontSize = 11;
+        edgeCurve = 25;
+        padding = 100;
+        animationSpeed = 220;
+      } else {
+        // Desktop
+        nodeRadius = 24;
+        nodeRadiusCurrent = 30;
+        arrowSize = 10;
+        arrowSizeHighlight = 14;
+        arrowDist = 25;
+        fontSize = 13;
+        edgeCurve = 30;
+        padding = 150;
+        animationSpeed = 250;
+      }
+    }
+
+    // DOM Elements
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const particleCanvas = document.getElementById('particleCanvas');
+    const pctx = particleCanvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const toast = document.getElementById('toast');
+
+    // Initialize
+    function init() {
+      resizeCanvas();
+      setupEventListeners();
+      loadGraph();
+      animate();
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      particleCanvas.width = window.innerWidth;
+      particleCanvas.height = window.innerHeight;
+      updateResponsiveSizes();
+    }
+
+    function setupEventListeners() {
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        if (Object.keys(graph).length > 0) {
+          calculateNodePositions();
+          renderGraph();
+        }
+      });
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (isRunning) return;
+          document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentMode = btn.dataset.mode;
+          resetVisualization();
+          loadGraph();
+        });
+      });
+
+      startBtn.addEventListener('click', () => {
+        if (isRunning) {
+          isRunning = false;
+          startBtn.textContent = '▶ START';
+          startBtn.classList.remove('running');
+        } else {
+          startAnalysis();
+        }
+      });
+    }
+
+    function loadGraph() {
+      const input = currentMode === 'part1' ? EXAMPLE_PART1 : EXAMPLE_PART2;
+      graph = parseGraph(input);
+      calculateNodePositions();
+      renderGraph();
+    }
+
+    function parseGraph(input) {
+      const newGraph = {};
+      const lines = input.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      
+      for (const line of lines) {
+        const parts = line.split(':');
+        if (parts.length < 2) continue;
+        const source = parts[0].trim();
+        const destinations = parts[1].trim().split(/\s+/).map(d => d.trim()).filter(d => d.length > 0);
+        newGraph[source] = destinations;
+      }
+      
+      return newGraph;
+    }
+
+    function calculateNodePositions() {
+      const allNodes = new Set();
+      for (const [src, dests] of Object.entries(graph)) {
+        allNodes.add(src);
+        for (const d of dests) allNodes.add(d);
+      }
+
+      const nodes = Array.from(allNodes);
+      const startNode = currentMode === 'part1' ? 'you' : 'svr';
+
+      // Calculate levels using BFS from start
+      const levels = {};
+      const visited = new Set();
+      let queue = [[startNode, 0]];
+      visited.add(startNode);
+      
+      while (queue.length > 0) {
+        const [node, level] = queue.shift();
+        levels[node] = level;
+        for (const next of (graph[node] || [])) {
+          if (!visited.has(next)) {
+            visited.add(next);
+            queue.push([next, level + 1]);
+          }
+        }
+      }
+
+      // Handle unreachable nodes
+      for (const node of nodes) {
+        if (levels[node] === undefined) {
+          levels[node] = -1;
+        }
+      }
+
+      // Group nodes by level
+      const levelGroups = {};
+      for (const [node, level] of Object.entries(levels)) {
+        if (!levelGroups[level]) levelGroups[level] = [];
+        levelGroups[level].push(node);
+      }
+
+      const maxLevel = Math.max(...Object.values(levels).filter(l => l >= 0));
+      const width = canvas.width - padding * 2;
+      const height = canvas.height - padding * 2;
+
+      nodePositions = {};
+
+      for (const [level, nodesAtLevel] of Object.entries(levelGroups)) {
+        const levelNum = parseInt(level);
+        if (levelNum < 0) continue;
+        
+        const x = padding + (levelNum / Math.max(maxLevel, 1)) * width;
+        const nodeCount = nodesAtLevel.length;
+        
+        nodesAtLevel.forEach((node, i) => {
+          const y = padding + ((i + 1) / (nodeCount + 1)) * height;
+          nodePositions[node] = { x, y };
+        });
+      }
+
+      // Position unreachable nodes at the left
+      const unreachable = Object.entries(levels).filter(([_, l]) => l < 0).map(([n, _]) => n);
+      unreachable.forEach((node, i) => {
+        nodePositions[node] = {
+          x: padding / 2,
+          y: padding + ((i + 1) / (unreachable.length + 1)) * height
+        };
+      });
+    }
+
+    function renderGraph(highlightPath = [], currentNode = null, visitedNodes = new Set()) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const startNode = currentMode === 'part1' ? 'you' : 'svr';
+      const specialNodes = ['dac', 'fft'];
+
+      // Draw edges
+      for (const [src, dests] of Object.entries(graph)) {
+        const srcPos = nodePositions[src];
+        if (!srcPos) continue;
+
+        for (const dest of dests) {
+          const destPos = nodePositions[dest];
+          if (!destPos) continue;
+
+          const srcIdx = highlightPath.indexOf(src);
+          const destIdx = highlightPath.indexOf(dest);
+          const isHighlighted = srcIdx !== -1 && destIdx !== -1 && destIdx === srcIdx + 1;
+
+          ctx.beginPath();
+          ctx.moveTo(srcPos.x, srcPos.y);
+          
+          // Curved edges
+          const midX = (srcPos.x + destPos.x) / 2;
+          const midY = (srcPos.y + destPos.y) / 2 - edgeCurve;
+          ctx.quadraticCurveTo(midX, midY, destPos.x, destPos.y);
+          
+          if (isHighlighted) {
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.9)';
+            ctx.lineWidth = Math.max(2, arrowSize / 3);
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 20;
+          } else {
+            ctx.strokeStyle = 'rgba(0, 247, 255, 0.15)';
+            ctx.lineWidth = Math.max(1, arrowSize / 5);
+            ctx.shadowBlur = 0;
+          }
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // Arrow head
+          const angle = Math.atan2(destPos.y - midY, destPos.x - midX);
+          const currentArrowSize = isHighlighted ? arrowSizeHighlight : arrowSize;
+          ctx.beginPath();
+          ctx.moveTo(
+            destPos.x - arrowDist * Math.cos(angle),
+            destPos.y - arrowDist * Math.sin(angle)
+          );
+          ctx.lineTo(
+            destPos.x - arrowDist * Math.cos(angle) - currentArrowSize * Math.cos(angle - Math.PI / 6),
+            destPos.y - arrowDist * Math.sin(angle) - currentArrowSize * Math.sin(angle - Math.PI / 6)
+          );
+          ctx.lineTo(
+            destPos.x - arrowDist * Math.cos(angle) - currentArrowSize * Math.cos(angle + Math.PI / 6),
+            destPos.y - arrowDist * Math.sin(angle) - currentArrowSize * Math.sin(angle + Math.PI / 6)
+          );
+          ctx.closePath();
+          ctx.fillStyle = isHighlighted ? 'rgba(0, 255, 136, 0.9)' : 'rgba(0, 247, 255, 0.25)';
+          ctx.fill();
+        }
+      }
+
+      // Draw nodes
+      for (const [node, pos] of Object.entries(nodePositions)) {
+        const isCurrent = node === currentNode;
+        const isStart = node === startNode;
+        const isEnd = node === 'out';
+        const isSpecial = specialNodes.includes(node);
+        const isInPath = highlightPath.includes(node);
+        const isVisited = visitedNodes.has(node);
+
+        let color = '#00f7ff';
+        let glowColor = 'rgba(0, 247, 255, 0.5)';
+        let radius = nodeRadius;
+
+        if (isCurrent) {
+          color = '#ffffff';
+          glowColor = 'rgba(255, 255, 255, 0.8)';
+          radius = nodeRadiusCurrent;
+        } else if (isStart) {
+          color = '#00ff88';
+          glowColor = 'rgba(0, 255, 136, 0.5)';
+        } else if (isEnd) {
+          color = '#ff6b35';
+          glowColor = 'rgba(255, 107, 53, 0.5)';
+        } else if (isSpecial) {
+          color = '#c77dff';
+          glowColor = 'rgba(199, 125, 255, 0.5)';
+        } else if (isInPath) {
+          color = '#00ff88';
+          glowColor = 'rgba(0, 255, 136, 0.5)';
+        } else if (isVisited) {
+          color = '#5a7a8a';
+          glowColor = 'rgba(90, 122, 138, 0.3)';
+        }
+
+        // Glow effect
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius + (radius * 0.6), 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, radius + (radius * 1.1));
+        gradient.addColorStop(0, glowColor);
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(10, 14, 23, 0.95)';
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(2, radius / 8);
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = color;
+        ctx.font = `bold ${fontSize}px "Share Tech Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node, pos.x, pos.y);
+
+        // Pulse animation for current node
+        if (isCurrent) {
+          const pulseRadius = radius + (radius * 0.3) + Math.sin(Date.now() / 150) * (radius * 0.15);
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, pulseRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.lineWidth = Math.max(1, radius / 12);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function updateCurrentPathDisplay() {
+      // Removed - no display element
+    }
+
+    function updateStats() {
+      // Removed - no stats elements
+    }
+
+    function addPathToList(path, isValid) {
+      // Removed - no paths list
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function startAnalysis() {
+      if (isRunning) return;
+      
+      resetVisualization();
+      isRunning = true;
+      startBtn.textContent = '■ STOP';
+      startBtn.classList.add('running');
+
+      const startNode = currentMode === 'part1' ? 'you' : 'svr';
+      const targetNode = 'out';
+
+      // DFS with visualization
+      async function dfs(current, path, visited, seenDac, seenFft) {
+        if (!isRunning) return;
+
+        path.push(current);
+        visited.add(current);
+        currentPath = [...path];
+
+        if (current === 'dac') seenDac = true;
+        if (current === 'fft') seenFft = true;
+
+        updateCurrentPathDisplay();
+        renderGraph(path, current, visited);
+        
+        // Spawn particles
+        const pos = nodePositions[current];
+        if (pos) spawnParticles(pos.x, pos.y);
+        
+        await sleep(animationSpeed);
+
+        if (current === targetNode) {
+          foundPaths.push([...path]);
+          
+          const isValid = currentMode === 'part1' || (seenDac && seenFft);
+          if (isValid) {
+            validPaths.push([...path]);
+          }
+          
+          addPathToList(path, isValid);
+          updateStats();
+          
+          // Flash the path
+          for (let i = 0; i < 3 && isRunning; i++) {
+            renderGraph(path, null, visited);
+            await sleep(80);
+            renderGraph([], null, visited);
+            await sleep(80);
+          }
+          renderGraph(path, null, visited);
+          await sleep(150);
+        } else {
+          const neighbors = graph[current] || [];
+          for (const next of neighbors) {
+            if (!visited.has(next) && isRunning) {
+              await dfs(next, path, visited, seenDac, seenFft);
+            }
+          }
+        }
+
+        // Backtrack
+        path.pop();
+        visited.delete(current);
+        currentPath = [...path];
+        updateCurrentPathDisplay();
+        
+        if (isRunning && path.length > 0) {
+          renderGraph(path, path[path.length - 1], visited);
+          await sleep(animationSpeed / 3);
+        }
+      }
+
+      if (graph[startNode]) {
+        await dfs(startNode, [], new Set(), false, false);
+      }
+
+      if (isRunning) {
+        isRunning = false;
+        startBtn.textContent = '▶ START';
+        startBtn.classList.remove('running');
+
+        const message = currentMode === 'part1' 
+          ? `Analysis Complete: ${validPaths.length} paths found`
+          : `Analysis Complete: ${validPaths.length} paths via DAC + FFT`;
+        showToast(message);
+      }
+    }
+
+    function resetVisualization() {
+      foundPaths = [];
+      validPaths = [];
+      currentPath = [];
+      particles = [];
+      loadGraph();
+    }
+
+    // Particle system
+    function spawnParticles(x, y) {
+      const count = window.innerWidth < 480 ? 5 : 10;
+      const maxSize = window.innerWidth < 480 ? 3 : 4;
+      const speed = window.innerWidth < 480 ? 4 : 6;
+      
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * speed,
+          vy: (Math.random() - 0.5) * speed,
+          life: 1,
+          decay: 0.015 + Math.random() * 0.02,
+          size: 2 + Math.random() * maxSize
+        });
+      }
+    }
+
+    function updateParticles() {
+      particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+        p.life -= p.decay;
+        return p.life > 0;
+      });
+    }
+
+    function renderParticles() {
+      pctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+      
+      for (const p of particles) {
+        pctx.beginPath();
+        pctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        pctx.fillStyle = `rgba(0, 247, 255, ${p.life * 0.7})`;
+        pctx.fill();
+      }
+    }
+
+    function animate() {
+      updateParticles();
+      renderParticles();
+      requestAnimationFrame(animate);
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>

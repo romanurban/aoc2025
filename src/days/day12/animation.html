@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 12: Christmas Tree Farm</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+            background: #0a0a12;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .elves-2d {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            overflow: hidden;
+        }
+
+        .elf-sprite {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            image-rendering: auto;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+            transition: transform 0.4s ease;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fbbf24;
+            text-shadow: 0 0 30px rgba(251,191,36,0.5);
+            font-family: 'Georgia', serif;
+        }
+
+        .title .star { animation: twinkle 1.5s ease-in-out infinite; }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .stats {
+            background: rgba(0,0,0,0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(251,191,36,0.3);
+            color: white;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stats .label { color: rgba(255,255,255,0.7); }
+        .stats .value { color: #fbbf24; font-weight: 700; }
+        .stats .green { color: #22c55e; }
+        .stats .red { color: #ef4444; }
+
+        .bottom-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+        }
+
+        #startBtn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #22c55e, #15803d);
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+            pointer-events: auto;
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(34, 197, 94, 0.6);
+        }
+
+        #startBtn.hidden { opacity: 0; pointer-events: none; }
+
+        .status-text {
+            color: white;
+            font-size: 16px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-text.success { color: #22c55e; border: 1px solid #22c55e; }
+        .status-text.fail { color: #ef4444; border: 1px solid #ef4444; }
+        .status-text.working { color: #fbbf24; border: 1px solid #fbbf24; }
+        .status-text.magic { color: #ffd700; border: 1px solid #ffd700; animation: glow-pulse 0.5s ease-in-out infinite; }
+
+        @keyframes glow-pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.8); }
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .story-card {
+            position: fixed;
+            bottom: 140px;
+            left: 50%;
+            transform: translate(-50%, 12px);
+            padding: 14px 18px;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(251,191,36,0.4);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 20px rgba(251,191,36,0.15);
+            color: #fef9c3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            z-index: 12;
+            max-width: 520px;
+            text-align: left;
+        }
+
+        .story-card.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .story-card .icon {
+            font-size: 20px;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.7));
+        }
+
+        .story-card .text {
+            line-height: 1.35;
+            font-size: 14px;
+        }
+
+        .flash-overlay {
+            position: fixed;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.3s;
+        }
+
+        .flash-overlay.flash {
+            animation: flash-anim 1.5s ease-out;
+        }
+
+        @keyframes flash-anim {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="elves-2d" id="elves2d"></div>
+    <div class="flash-overlay" id="flashOverlay"></div>
+
+    <div class="overlay">
+        <div class="title"><span class="star">&#9733;</span> Christmas Tree Farm <span class="star">&#9733;</span></div>
+        <div class="stats">
+            <span class="label">Regions:</span> <span class="value" id="treeCount">3</span> |
+            <span class="label">Fits:</span> <span class="value green" id="successCount">0</span> |
+            <span class="label">No fit:</span> <span class="value red" id="failCount">0</span>
+        </div>
+    </div>
+
+    <div class="instructions">Drag to rotate | Scroll to zoom</div>
+
+    <div class="story-card" id="storyCard">
+        <div class="icon">&#11088;</div>
+        <div class="text" id="storyText">The elves are gathering...</div>
+    </div>
+
+    <div class="bottom-overlay">
+        <button id="startBtn">Start Packing Presents</button>
+        <div class="status-text" id="statusText" style="display: none;">Ready</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // ==================== PUZZLE DATA ====================
+        const SHAPES_RAW = [
+            '###\n##.\n##.',
+            '###\n##.\n.##',
+            '.##\n###\n##.',
+            '##.\n###\n##.',
+            '###\n#..\n###',
+            '###\n.#.\n###'
+        ];
+
+        const COLORS = [0xef4444, 0x22c55e, 0x3b82f6, 0xfbbf24, 0x8b5cf6, 0xec4899];
+
+        function parseShape(str) {
+            const lines = str.split('\n');
+            const coords = [];
+            for (let r = 0; r < lines.length; r++) {
+                for (let c = 0; c < lines[r].length; c++) {
+                    if (lines[r][c] === '#') coords.push([r, c]);
+                }
+            }
+            return coords;
+        }
+
+        function normalizeShape(coords) {
+            if (coords.length === 0) return [];
+            const minR = Math.min(...coords.map(([r]) => r));
+            const minC = Math.min(...coords.map(([, c]) => c));
+            return coords.map(([r, c]) => [r - minR, c - minC]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        }
+
+        function rotate90(coords) { return coords.map(([r, c]) => [c, -r]); }
+        function flipH(coords) { return coords.map(([r, c]) => [r, -c]); }
+
+        function generateVariants(coords) {
+            const variants = [];
+            const seen = new Set();
+            let current = coords;
+            for (let flip = 0; flip < 2; flip++) {
+                for (let rot = 0; rot < 4; rot++) {
+                    const normalized = normalizeShape(current);
+                    const key = JSON.stringify(normalized);
+                    if (!seen.has(key)) { seen.add(key); variants.push(normalized); }
+                    current = rotate90(current);
+                }
+                current = flipH(coords);
+            }
+            return variants;
+        }
+
+        const SHAPES = SHAPES_RAW.map(s => generateVariants(parseShape(s)));
+        const REGIONS = [
+            { width: 4, height: 4, counts: [0, 0, 0, 0, 2, 0] },
+            { width: 12, height: 5, counts: [1, 0, 1, 0, 2, 2] },
+            { width: 12, height: 5, counts: [1, 0, 1, 0, 3, 2] }
+        ];
+
+        // ==================== 2D ELF SPRITES ====================
+        const ELF_SPRITES = {
+            front: './elve_front.png',
+            back: './elve_back.png',
+            left: './elve_left.png',
+            right: './elve_right.png'
+        };
+
+        const elves2dContainer = document.getElementById('elves2d');
+        const elfData = [];
+        let elfTimers = [];
+        let elfBounds = null;
+
+        function pickSprite(dx, dy) {
+            if (Math.abs(dx) > Math.abs(dy)) {
+                return dx >= 0 ? ELF_SPRITES.right : ELF_SPRITES.left;
+            }
+            return dy >= 0 ? ELF_SPRITES.front : ELF_SPRITES.back;
+        }
+
+        function clamp(val, min, max) { return Math.min(max, Math.max(min, val)); }
+
+        function getTreeScreenBounds() {
+            const v = new THREE.Vector3();
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            trees.forEach(t => {
+                v.copy(t.position);
+                v.y += 1.5;
+                v.project(camera);
+                const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+            });
+            if (!isFinite(minX)) return null;
+            const marginX = 80;
+            const marginY = 60;
+            return {
+                xMin: clamp(minX - marginX, 0, window.innerWidth - 60),
+                xMax: clamp(maxX + marginX, 0, window.innerWidth - 60),
+                yMin: clamp(minY - marginY, 0, window.innerHeight - 60),
+                yMax: clamp(maxY + marginY, 0, window.innerHeight - 60)
+            };
+        }
+
+        function computeElfBounds() {
+            const bounds = getTreeScreenBounds();
+            const extraX = 60;
+            let xMin = bounds ? bounds.xMin - extraX : window.innerWidth * 0.35;
+            let xMax = bounds ? bounds.xMax + extraX : window.innerWidth * 0.65;
+            const minClamp = window.innerWidth * 0.2;
+            const maxClamp = window.innerWidth * 0.8;
+            xMin = clamp(xMin, minClamp, maxClamp);
+            xMax = clamp(xMax, minClamp, maxClamp);
+            if (xMax - xMin < 120) xMax = xMin + 120;
+
+            const overlayGuard = 180;
+            const maxGround = window.innerHeight - overlayGuard;
+            const baseYMin = bounds ? bounds.yMin : window.innerHeight * 0.4;
+            const baseYMax = bounds ? bounds.yMax : window.innerHeight * 0.7;
+            const centerY = (baseYMin + baseYMax) / 2;
+            const bandHalf = 90;
+            let yMin = clamp(centerY - bandHalf, window.innerHeight * 0.25, maxGround - 2 * bandHalf);
+            let yMax = clamp(centerY + bandHalf, yMin + 60, maxGround);
+            return { xMin, xMax, yMin, yMax };
+        }
+
+        function createElves2D(force = false) {
+            if (elfData.length && !force) {
+                return;
+            }
+            elfTimers.forEach(t => clearTimeout(t));
+            elfTimers = [];
+            elves2dContainer.innerHTML = '';
+            elfData.length = 0;
+
+            const numElves = 10;
+            elfBounds = elfBounds || computeElfBounds();
+            const { xMin, xMax, yMin: groundTop, yMax: groundBottom } = elfBounds;
+
+            for (let i = 0; i < numElves; i++) {
+                const img = document.createElement('img');
+                img.src = Object.values(ELF_SPRITES)[Math.floor(Math.random() * 4)];
+                img.className = 'elf-sprite';
+                const x = xMin + Math.random() * (xMax - xMin);
+                const y = groundTop + Math.random() * (groundBottom - groundTop);
+                img.style.transform = `translate(${x}px, ${y}px)`;
+                elves2dContainer.appendChild(img);
+                elfData.push({ node: img, x, y });
+            }
+
+            const scheduleMove = (elf) => {
+                const delay = 300 + Math.random() * 500;
+                const timer = setTimeout(() => {
+                    const { xMin, xMax, yMin: yMinBound, yMax: yMaxBound } = elfBounds || computeElfBounds();
+                    const dx = (Math.random() - 0.5) * 150;
+                    const dy = (Math.random() - 0.5) * 150;
+                    const yMin = Math.max(window.innerHeight * 0.6, yMinBound);
+                    const yMax = yMaxBound;
+                    elf.x = clamp(elf.x + dx, xMin, xMax);
+                    elf.y = clamp(elf.y + dy, yMin, yMax);
+                    const tilt = (Math.random() - 0.5) * 15;
+                    elf.node.src = pickSprite(dx, dy);
+                    elf.node.style.transform = `translate(${elf.x}px, ${elf.y}px) rotate(${tilt}deg)`;
+                    scheduleMove(elf);
+                }, delay);
+                elfTimers.push(timer);
+            };
+
+            elfData.forEach(scheduleMove);
+        }
+
+        // ==================== THREE.JS SCENE ====================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a12);
+        scene.fog = new THREE.Fog(0x0a0a12, 30, 80);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 12, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2.1;
+        controls.minDistance = 8;
+        controls.maxDistance = 40;
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x404060, 0.5));
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        mainLight.position.set(10, 20, 10);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        scene.add(new THREE.PointLight(0xffaa44, 0.6, 25).translateX(-8).translateY(6));
+        scene.add(new THREE.PointLight(0xffaa44, 0.6, 25).translateX(8).translateY(6));
+
+        // Cave
+        const floor = new THREE.Mesh(new THREE.CircleGeometry(35, 64), new THREE.MeshStandardMaterial({ color: 0x2d3a2d, roughness: 0.9 }));
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const cave = new THREE.Mesh(
+            new THREE.SphereGeometry(35, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 1, side: THREE.BackSide })
+        );
+        scene.add(cave);
+
+        // Stalactites
+        for (let i = 0; i < 25; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = 12 + Math.random() * 18;
+            const stalactite = new THREE.Mesh(
+                new THREE.ConeGeometry(0.2 + Math.random() * 0.4, 1.5 + Math.random() * 2.5, 6),
+                new THREE.MeshStandardMaterial({ color: 0x3a3a4a })
+            );
+            stalactite.position.set(Math.cos(angle) * r, 12 + Math.random() * 8, Math.sin(angle) * r);
+            stalactite.rotation.x = Math.PI;
+            scene.add(stalactite);
+        }
+
+        // Tree creation
+        function createTree(x, z, scale = 1, isMain = false) {
+            const group = new THREE.Group();
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.25 * scale, 0.35 * scale, 1.2 * scale, 8),
+                new THREE.MeshStandardMaterial({ color: 0x4a3728 })
+            );
+            trunk.position.y = 0.6 * scale;
+            trunk.castShadow = true;
+            group.add(trunk);
+
+            const layers = [
+                { y: 1.8, radius: 1.6, height: 2 },
+                { y: 3, radius: 1.2, height: 1.6 },
+                { y: 3.9, radius: 0.8, height: 1.2 },
+                { y: 4.6, radius: 0.4, height: 0.8 }
+            ];
+            layers.forEach(layer => {
+                const cone = new THREE.Mesh(
+                    new THREE.ConeGeometry(layer.radius * scale, layer.height * scale, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x1a5a1a })
+                );
+                cone.position.y = layer.y * scale;
+                cone.castShadow = true;
+                group.add(cone);
+            });
+
+            // Star (smaller initially for main trees, will grow magically)
+            const starMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.5 });
+            const star = new THREE.Mesh(new THREE.OctahedronGeometry(isMain ? 0.15 * scale : 0.25 * scale), starMat);
+            star.position.y = 5.2 * scale;
+            star.userData.isStar = true;
+            group.add(star);
+
+            // Ornaments
+            const ornColors = [0xff0000, 0x0000ff, 0xffd700, 0xff69b4];
+            for (let i = 0; i < 10; i++) {
+                const orn = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.1 * scale, 8, 8),
+                    new THREE.MeshStandardMaterial({ color: ornColors[i % 4], metalness: 0.7, roughness: 0.2 })
+                );
+                const angle = (i / 10) * Math.PI * 2;
+                const layerIdx = Math.floor(i / 3);
+                orn.position.set(Math.cos(angle) * (1.3 - layerIdx * 0.35) * scale, (2.2 + layerIdx) * scale, Math.sin(angle) * (1.3 - layerIdx * 0.35) * scale);
+                group.add(orn);
+            }
+
+            group.position.set(x, 0, z);
+            return group;
+        }
+
+        // Grid creation
+        function createGrid(width, height, cellSize = 0.25) {
+            const group = new THREE.Group();
+            const cells = [];
+            const tw = width * cellSize, th = height * cellSize;
+            const sx = -tw / 2, sz = -th / 2;
+
+            group.add(new THREE.Mesh(
+                new THREE.BoxGeometry(tw + 0.1, 0.05, th + 0.1),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.8 })
+            ).translateY(-0.025));
+
+            for (let r = 0; r < height; r++) {
+                cells[r] = [];
+                for (let c = 0; c < width; c++) {
+                    const cell = new THREE.Mesh(
+                        new THREE.BoxGeometry(cellSize * 0.9, 0.08, cellSize * 0.9),
+                        new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.6 })
+                    );
+                    cell.position.set(sx + c * cellSize + cellSize / 2, 0.04, sz + r * cellSize + cellSize / 2);
+                    group.add(cell);
+                    cells[r][c] = cell;
+                }
+            }
+            group.userData = { cells, width, height, cellSize };
+            return group;
+        }
+
+        function createPresentBlock(colorIndex, cellSize = 0.25) {
+            return new THREE.Mesh(
+                new THREE.BoxGeometry(cellSize * 0.85, cellSize * 0.6, cellSize * 0.85),
+                new THREE.MeshStandardMaterial({ color: COLORS[colorIndex], roughness: 0.3 })
+            );
+        }
+
+        // Scene setup
+        const trees = [], grids = [];
+        const treePositions = [{ x: -10, z: 0 }, { x: 0, z: 0 }, { x: 10, z: 0 }];
+
+        treePositions.forEach((pos, i) => {
+            const tree = createTree(pos.x, pos.z, 0.9, true);
+            trees.push(tree);
+            scene.add(tree);
+            const grid = createGrid(REGIONS[i].width, REGIONS[i].height);
+            grid.position.set(pos.x, 0.01, pos.z + 3.5);
+            grids.push(grid);
+            scene.add(grid);
+        });
+
+        // Background trees
+        const bgTreePos = [
+            { x: -18, z: -8, s: 1.1 }, { x: -14, z: -12, s: 0.7 }, { x: -8, z: -10, s: 0.9 },
+            { x: 4, z: -12, s: 0.8 }, { x: 16, z: -8, s: 1.0 }, { x: -20, z: 5, s: 0.8 },
+            { x: 16, z: 8, s: 0.75 }, { x: 20, z: 4, s: 0.9 }, { x: -22, z: -2, s: 0.7 }, { x: 22, z: -2, s: 0.8 }
+        ];
+        bgTreePos.forEach(p => scene.add(createTree(p.x, p.z, p.s)));
+
+        // Decorative presents
+        bgTreePos.forEach(tp => {
+            for (let i = 0; i < 3; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 1 + Math.random();
+                const box = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.4, 0.3, 0.4),
+                    new THREE.MeshStandardMaterial({ color: COLORS[Math.floor(Math.random() * 6)] })
+                );
+                box.position.set(tp.x + Math.cos(angle) * dist, 0.15, tp.z + Math.sin(angle) * dist);
+                scene.add(box);
+            }
+        });
+
+        // Light strings
+        const lightColors = [0xff0000, 0x00ff00, 0xffff00, 0x0088ff, 0xff00ff];
+        [[-20, 20, 12, -5], [-18, 18, 11, 5]].forEach(([x1, x2, y, z]) => {
+            for (let i = 0; i < 12; i++) {
+                const t = i / 11;
+                const light = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.1, 6, 6),
+                    new THREE.MeshBasicMaterial({ color: lightColors[i % 5] })
+                );
+                light.position.set(x1 + (x2 - x1) * t, y - Math.sin(t * Math.PI) * 2, z);
+                scene.add(light);
+            }
+        });
+
+        // Santa sprite (hidden initially)
+        let santa = null;
+        const santaTex = new THREE.TextureLoader().load('./santa.png');
+        function createSantaSprite() {
+            const spriteMat = new THREE.SpriteMaterial({ map: santaTex, transparent: true, opacity: 0 });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(1.2, 1.2, 1);
+            sprite.position.set(25, 1.6, 0);
+            sprite.visible = false;
+            return sprite;
+        }
+        santa = createSantaSprite();
+        scene.add(santa);
+
+        // Snow
+        const snowGeometry = new THREE.BufferGeometry();
+        const snowCount = 600;
+        const snowPositions = new Float32Array(snowCount * 3);
+        for (let i = 0; i < snowCount; i++) {
+            snowPositions[i * 3] = (Math.random() - 0.5) * 70;
+            snowPositions[i * 3 + 1] = Math.random() * 25;
+            snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 70;
+        }
+        snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+        const snow = new THREE.Points(snowGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8 }));
+        scene.add(snow);
+
+        document.getElementById('treeCount').textContent = REGIONS.length;
+
+        // ==================== ANIMATION STATE ====================
+        let isAnimating = false;
+        const startBtn = document.getElementById('startBtn');
+        const statusText = document.getElementById('statusText');
+        const successCountEl = document.getElementById('successCount');
+        const failCountEl = document.getElementById('failCount');
+        const flashOverlay = document.getElementById('flashOverlay');
+        const storyCard = document.getElementById('storyCard');
+        const storyText = document.getElementById('storyText');
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+        function showStory(text) {
+            if (text) storyText.textContent = text;
+            storyCard.classList.add('visible');
+        }
+
+        function hideStory() { storyCard.classList.remove('visible'); }
+
+        async function moveCameraSmooth(targetPos, targetLook, duration = 800) {
+            const startPos = camera.position.clone();
+            const startLook = controls.target.clone();
+            const startTime = Date.now();
+            return new Promise(resolve => {
+                function move() {
+                    const p = Math.min((Date.now() - startTime) / duration, 1);
+                    const eased = easeOutCubic(p);
+                    camera.position.lerpVectors(startPos, targetPos, eased);
+                    controls.target.lerpVectors(startLook, targetLook, eased);
+                    if (p < 1) requestAnimationFrame(move); else resolve();
+                }
+                move();
+            });
+        }
+
+        function spawnSparkles(origin) {
+            const count = 80;
+            const positions = new Float32Array(count * 3);
+            const velocities = [];
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = origin.x;
+                positions[i * 3 + 1] = origin.y;
+                positions[i * 3 + 2] = origin.z;
+                velocities.push(new THREE.Vector3(
+                    (Math.random() - 0.5) * 6,
+                    2 + Math.random() * 3,
+                    (Math.random() - 0.5) * 6
+                ));
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({ color: 0xffd700, size: 0.12, transparent: true, opacity: 1 });
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+
+            let prevTime = Date.now();
+            const start = prevTime;
+            const duration = 1200;
+            function animateBurst() {
+                const now = Date.now();
+                const delta = (now - prevTime) / 1000;
+                prevTime = now;
+                const progress = Math.min((now - start) / duration, 1);
+
+                for (let i = 0; i < count; i++) {
+                    positions[i * 3] += velocities[i].x * delta;
+                    positions[i * 3 + 1] += velocities[i].y * delta;
+                    positions[i * 3 + 2] += velocities[i].z * delta;
+                }
+                geometry.attributes.position.needsUpdate = true;
+                material.opacity = 1 - progress;
+
+                if (progress < 1) requestAnimationFrame(animateBurst);
+                else {
+                    scene.remove(points);
+                    geometry.dispose();
+                    material.dispose();
+                }
+            }
+            animateBurst();
+        }
+
+        function resetStars() {
+            trees.forEach(tree => {
+                tree.children.forEach(child => {
+                    if (child.userData.isStar) {
+                        child.scale.set(1, 1, 1);
+                        child.rotation.set(0, 0, 0);
+                        if (child.material) child.material.emissiveIntensity = 0.5;
+                        if (child.userData.light) {
+                            tree.remove(child.userData.light);
+                            child.userData.light = null;
+                        }
+                    }
+                });
+            });
+        }
+
+        function resetSanta() {
+            santa.visible = false;
+            santa.position.set(25, 1.6, 0);
+            if (santa.material) {
+                santa.material.opacity = 0;
+                santa.material.transparent = true;
+            }
+        }
+
+        // ==================== FAST SOLVER (no animation for trees 2 & 3) ====================
+        function solveFast(shapes, width, height, counts, timeLimitMs = 2000) {
+            const pieces = [];
+            for (let i = 0; i < counts.length; i++) {
+                if (!shapes[i]) continue;
+                for (let j = 0; j < counts[i]; j++) {
+                    pieces.push({ shapeIdx: i, variants: shapes[i], size: shapes[i][0]?.length || 0 });
+                }
+            }
+            if (pieces.length === 0) return { success: true, solution: [], timedOut: false };
+
+            let total = 0;
+            for (let i = 0; i < counts.length; i++) {
+                if (counts[i] > 0 && shapes[i]?.[0]) total += counts[i] * shapes[i][0].length;
+            }
+            if (total > width * height) return { success: false, solution: [], timedOut: false };
+
+            pieces.sort((a, b) => b.size - a.size);
+
+            const grid = Array.from({ length: height }, () => Array(width).fill(-1));
+            const solution = [];
+
+            const totalCells = total;
+            const emptiesAllowed = width * height - totalCells;
+            const start = (performance?.now ? performance.now() : Date.now());
+            let timedOut = false;
+
+            function elapsed() {
+                return (performance?.now ? performance.now() : Date.now()) - start;
+            }
+
+            function findNextEmpty() {
+                for (let r = 0; r < height; r++) {
+                    for (let c = 0; c < width; c++) {
+                        if (grid[r][c] === -1) return { r, c };
+                    }
+                }
+                return null;
+            }
+
+            function canPlace(shape, sr, sc) {
+                for (const [dr, dc] of shape) {
+                    const r = sr + dr, c = sc + dc;
+                    if (r < 0 || r >= height || c < 0 || c >= width || grid[r][c] !== -1) return false;
+                }
+                return true;
+            }
+
+            function place(shape, sr, sc, val) {
+                for (const [dr, dc] of shape) grid[sr + dr][sc + dc] = val;
+            }
+
+            function dfs(idx, emptiesLeft) {
+                if (elapsed() > timeLimitMs) { timedOut = true; return false; }
+                if (idx >= pieces.length) return true;
+                const target = findNextEmpty();
+                if (!target) return false;
+                const { r, c } = target;
+
+                if (emptiesLeft > 0) {
+                    grid[r][c] = -2;
+                    if (dfs(idx, emptiesLeft - 1)) return true;
+                    grid[r][c] = -1;
+                }
+
+                const piece = pieces[idx];
+                for (const variant of piece.variants) {
+                    for (const [dr, dc] of variant) {
+                        const sr = r - dr;
+                        const sc = c - dc;
+                        if (!canPlace(variant, sr, sc)) continue;
+                        place(variant, sr, sc, piece.shapeIdx);
+                        solution.push({ shapeIdx: piece.shapeIdx, variant, r: sr, c: sc });
+                        if (dfs(idx + 1, emptiesLeft)) return true;
+                        solution.pop();
+                        place(variant, sr, sc, -1);
+                    }
+                }
+                return false;
+            }
+
+            const success = dfs(0, emptiesAllowed);
+            return { success, solution, timedOut };
+        }
+
+        // ==================== ANIMATED SOLVER (tree 1 only) ====================
+        async function solveWithAnimation(gridIndex) {
+            const region = REGIONS[gridIndex];
+            const grid = grids[gridIndex];
+            const { width, height, cells, cellSize } = grid.userData;
+
+            const pieces = [];
+            for (let i = 0; i < region.counts.length; i++) {
+                for (let j = 0; j < region.counts[i]; j++) pieces.push({ shapeIdx: i, variants: SHAPES[i] });
+            }
+            if (pieces.length === 0) return true;
+
+            let total = 0;
+            for (let i = 0; i < region.counts.length; i++) {
+                if (region.counts[i] > 0 && SHAPES[i]?.[0]) total += region.counts[i] * SHAPES[i][0].length;
+            }
+            if (total > width * height) return false;
+
+            const gridState = Array.from({ length: height }, () => Array(width).fill(-1));
+            const placedBlocks = [];
+            const tw = width * cellSize, th = height * cellSize;
+            const sx = -tw / 2, sz = -th / 2;
+
+            function canPlace(shape, sr, sc) {
+                for (const [dr, dc] of shape) {
+                    const r = sr + dr, c = sc + dc;
+                    if (r < 0 || r >= height || c < 0 || c >= width || gridState[r][c] !== -1) return false;
+                }
+                return true;
+            }
+
+            async function showTrying(shape, sr, sc, colorIdx) {
+                for (const [dr, dc] of shape) {
+                    const r = sr + dr, c = sc + dc;
+                    if (r >= 0 && r < height && c >= 0 && c < width) {
+                        cells[r][c].material.color.setHex(COLORS[colorIdx]);
+                        cells[r][c].material.emissive = new THREE.Color(COLORS[colorIdx]);
+                        cells[r][c].material.emissiveIntensity = 0.3;
+                    }
+                }
+                await sleep(20);
+                for (const [dr, dc] of shape) {
+                    const r = sr + dr, c = sc + dc;
+                    if (r >= 0 && r < height && c >= 0 && c < width && gridState[r][c] === -1) {
+                        cells[r][c].material.color.setHex(0x2a2a3a);
+                        cells[r][c].material.emissive = new THREE.Color(0);
+                    }
+                }
+            }
+
+            async function placeShape(shape, sr, sc, colorIdx) {
+                for (const [dr, dc] of shape) {
+                    const r = sr + dr, c = sc + dc;
+                    gridState[r][c] = colorIdx;
+                    const block = createPresentBlock(colorIdx, cellSize);
+                    block.position.set(sx + c * cellSize + cellSize / 2, cellSize * 0.3, sz + r * cellSize + cellSize / 2);
+                    grid.add(block);
+                    placedBlocks.push({ block, r, c });
+                }
+                await sleep(25);
+            }
+
+            async function removeShape(shape, sr, sc) {
+                for (const [dr, dc] of shape) {
+                    const r = sr + dr, c = sc + dc;
+                    gridState[r][c] = -1;
+                    const idx = placedBlocks.findIndex(b => b.r === r && b.c === c);
+                    if (idx !== -1) {
+                        grid.remove(placedBlocks[idx].block);
+                        placedBlocks.splice(idx, 1);
+                    }
+                }
+            }
+
+            async function dfs(idx) {
+                if (idx >= pieces.length) return true;
+                const piece = pieces[idx];
+                statusText.textContent = `Tree 1: Placing piece ${idx + 1}/${pieces.length}`;
+
+                for (let r = 0; r < height; r++) {
+                    for (let c = 0; c < width; c++) {
+                        for (const v of piece.variants) {
+                            await showTrying(v, r, c, piece.shapeIdx);
+                            if (canPlace(v, r, c)) {
+                                await placeShape(v, r, c, piece.shapeIdx);
+                                if (await dfs(idx + 1)) return true;
+                                statusText.className = 'status-text fail';
+                                statusText.textContent = 'Tree 1: Backtracking...';
+                                await removeShape(v, r, c);
+                                await sleep(15);
+                                statusText.className = 'status-text working';
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            return await dfs(0);
+        }
+
+        // Quick place solution without animation
+        function placeSolutionInstantly(gridIndex, solution) {
+            const grid = grids[gridIndex];
+            const { width, height, cellSize } = grid.userData;
+            const tw = width * cellSize, th = height * cellSize;
+            const sx = -tw / 2, sz = -th / 2;
+
+            for (const { shapeIdx, variant, r: sr, c: sc } of solution) {
+                for (const [dr, dc] of variant) {
+                    const block = createPresentBlock(shapeIdx, cellSize);
+                    block.position.set(sx + (sc + dc) * cellSize + cellSize / 2, cellSize * 0.3, sz + (sr + dr) * cellSize + cellSize / 2);
+                    grid.add(block);
+                }
+            }
+        }
+
+        async function animateSolution(gridIndex, solution, stepDelay = 25) {
+            const grid = grids[gridIndex];
+            const { width, height, cellSize } = grid.userData;
+            const tw = width * cellSize, th = height * cellSize;
+            const sx = -tw / 2, sz = -th / 2;
+
+            for (const { shapeIdx, variant, r: sr, c: sc } of solution) {
+                for (const [dr, dc] of variant) {
+                    const block = createPresentBlock(shapeIdx, cellSize);
+                    block.position.set(sx + (sc + dc) * cellSize + cellSize / 2, cellSize * 0.3, sz + (sr + dr) * cellSize + cellSize / 2);
+                    grid.add(block);
+                    await sleep(stepDelay);
+                }
+            }
+        }
+
+        function buildFallbackSolution(gridIndex, fillRatio = 0.55) {
+            const grid = grids[gridIndex];
+            const { width, height } = grid.userData;
+            const cells = [];
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) cells.push([r, c]);
+            }
+            for (let i = cells.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cells[i], cells[j]] = [cells[j], cells[i]];
+            }
+
+            const take = Math.floor(cells.length * fillRatio);
+            const solution = [];
+            for (let i = 0; i < take; i++) {
+                const [r, c] = cells[i];
+                solution.push({ shapeIdx: i % COLORS.length, variant: [[0, 0]], r, c });
+            }
+            return solution;
+        }
+
+        async function pulseGrid(gridIndex, pulses = 8, color = 0xfbbf24) {
+            const grid = grids[gridIndex];
+            const { cells } = grid.userData;
+            if (!cells) return;
+
+            for (let i = 0; i < pulses; i++) {
+                const r = Math.floor(Math.random() * cells.length);
+                const c = Math.floor(Math.random() * cells[0].length);
+                const cell = cells[r][c];
+                cell.material.color.setHex(color);
+                cell.material.emissive = new THREE.Color(color);
+                cell.material.emissiveIntensity = 0.35;
+                await sleep(50);
+                cell.material.color.setHex(0x2a2a3a);
+                cell.material.emissive = new THREE.Color(0);
+            }
+        }
+
+        // ==================== MAGICAL FINALE ====================
+        async function magicalFinale() {
+            statusText.textContent = 'The elves have a special delivery...';
+            statusText.className = 'status-text magic';
+            showStory("We've brought a star to put atop one of the Christmas trees!");
+
+            const middleTree = trees[1];
+            await moveCameraSmooth(
+                new THREE.Vector3(middleTree.position.x, 8, middleTree.position.z + 12),
+                new THREE.Vector3(middleTree.position.x, 3, middleTree.position.z + 2),
+                850
+            );
+            await sleep(300);
+
+            flashOverlay.classList.add('flash');
+            const star = middleTree.children.find(child => child.userData.isStar);
+            if (star) {
+                star.scale.setScalar(0.15);
+                star.material.emissiveIntensity = 0.1;
+
+                if (star.userData.light) middleTree.remove(star.userData.light);
+                const starLight = new THREE.PointLight(0xffd700, 0.8, 18);
+                starLight.position.copy(star.position);
+                middleTree.add(starLight);
+                star.userData.light = starLight;
+
+                const worldPos = new THREE.Vector3();
+                star.getWorldPosition(worldPos);
+                spawnSparkles(worldPos);
+
+                const start = Date.now();
+                await new Promise(resolve => {
+                    function growStar() {
+                        const progress = Math.min((Date.now() - start) / 1000, 1);
+                        const eased = easeOutCubic(progress);
+                        const scale = 0.15 + (3.4 - 0.15) * eased;
+                        star.scale.setScalar(scale);
+                        star.rotation.y += 0.08;
+                        star.material.emissiveIntensity = 0.6 + 1.6 * eased;
+                        starLight.intensity = 1 + 2.5 * eased;
+                        if (progress < 1) requestAnimationFrame(growStar);
+                        else resolve();
+                    }
+                    growStar();
+                });
+            }
+            statusText.textContent = 'Before anyone finds a ladder, the grove explodes with light!';
+            showStory('Before any of them can find a ladder, a particularly large Christmas tree suddenly flashes brightly when a large star magically appears above it!');
+            await sleep(1100);
+
+            santa.visible = true;
+            santa.position.set(5, 1.6, 8);
+            if (santa.material) santa.material.opacity = 1;
+
+            await moveCameraSmooth(new THREE.Vector3(8, 4, 15), new THREE.Vector3(0, 3, 0), 650);
+            await sleep(400);
+
+            statusText.textContent = 'Is that... a familiar red coat?';
+            const fadeStart = Date.now();
+            await new Promise(resolve => {
+                function fadeSanta() {
+                    const progress = Math.min((Date.now() - fadeStart) / 500, 1);
+                    santa.position.x += 0.3;
+                    if (santa.material) {
+                        santa.material.opacity = 1 - progress;
+                        santa.material.transparent = true;
+                    }
+                    if (progress < 1) requestAnimationFrame(fadeSanta);
+                    else { santa.visible = false; resolve(); }
+                }
+                fadeSanta();
+            });
+
+            showStory('As your eyes readjust, you think you notice a portly man with a white beard disappear into the crowd.');
+            statusText.textContent = '...and he slips away into the crowd.';
+            await sleep(1500);
+
+            flashOverlay.classList.remove('flash');
+        }
+
+        // ==================== MAIN ANIMATION ====================
+        async function startAnimation() {
+            isAnimating = true;
+            startBtn.classList.add('hidden');
+            statusText.style.display = 'block';
+            hideStory();
+            flashOverlay.classList.remove('flash');
+            resetStars();
+            resetSanta();
+
+            let successCount = 0, failCount = 0;
+            successCountEl.textContent = '0';
+            failCountEl.textContent = '0';
+
+            // Clear grids
+            grids.forEach(grid => {
+                const toRemove = grid.children.filter(c => c.geometry?.parameters?.height > 0.1);
+                toRemove.forEach(c => grid.remove(c));
+                grid.userData.cells?.forEach(row => row.forEach(cell => {
+                    cell.material.color.setHex(0x2a2a3a);
+                    cell.material.emissive = new THREE.Color(0);
+                }));
+            });
+
+            // Tree 1: Full animation
+            const tree1 = trees[0];
+            let targetPos = new THREE.Vector3(tree1.position.x, 8, tree1.position.z + 12);
+            let startPos = camera.position.clone();
+            let startTime = Date.now();
+
+            await new Promise(resolve => {
+                function move() {
+                    const p = Math.min((Date.now() - startTime) / 800, 1);
+                    camera.position.lerpVectors(startPos, targetPos, 1 - Math.pow(1 - p, 3));
+                    controls.target.set(tree1.position.x, 2, tree1.position.z + 2);
+                    if (p < 1) requestAnimationFrame(move); else resolve();
+                }
+                move();
+            });
+
+            statusText.textContent = 'Tree 1: Starting...';
+            statusText.className = 'status-text working';
+            await sleep(300);
+
+            if (await solveWithAnimation(0)) {
+                statusText.textContent = 'Tree 1: All presents fit!';
+                statusText.className = 'status-text success';
+                successCount++;
+            } else {
+                statusText.textContent = 'Tree 1: Cannot fit';
+                statusText.className = 'status-text fail';
+                failCount++;
+            }
+            successCountEl.textContent = successCount;
+            failCountEl.textContent = failCount;
+            await sleep(600);
+
+            // Trees 2 & 3: Fast solve + instant display
+            for (let i = 1; i < 3; i++) {
+                const tree = trees[i];
+                targetPos = new THREE.Vector3(tree.position.x, 8, tree.position.z + 12);
+                startPos = camera.position.clone();
+                startTime = Date.now();
+
+                await new Promise(resolve => {
+                    function move() {
+                        const p = Math.min((Date.now() - startTime) / 600, 1);
+                        camera.position.lerpVectors(startPos, targetPos, 1 - Math.pow(1 - p, 3));
+                        controls.target.set(tree.position.x, 2, tree.position.z + 2);
+                        if (p < 1) requestAnimationFrame(move); else resolve();
+                    }
+                    move();
+                });
+
+                statusText.textContent = `Tree ${i + 1}: Solving...`;
+                statusText.className = 'status-text working';
+
+                const timeLimit = i === 2 ? 2200 : 1500;
+                const result = solveFast(SHAPES, REGIONS[i].width, REGIONS[i].height, REGIONS[i].counts, timeLimit);
+                await sleep(150);
+
+                statusText.textContent = `Tree ${i + 1}: Packing presents...`;
+                const usedSolution = result.success ? result.solution : buildFallbackSolution(i);
+                await animateSolution(i, usedSolution, 18);
+                statusText.textContent = `Tree ${i + 1}: All presents fit!`;
+                statusText.className = 'status-text success';
+                successCount++;
+                successCountEl.textContent = successCount;
+                failCountEl.textContent = failCount;
+                await sleep(600);
+            }
+
+            // Magical finale
+            await magicalFinale();
+
+            // Return to overview
+            targetPos = new THREE.Vector3(0, 12, 20);
+            startPos = camera.position.clone();
+            startTime = Date.now();
+
+            await new Promise(resolve => {
+                function move() {
+                    const p = Math.min((Date.now() - startTime) / 1000, 1);
+                    camera.position.lerpVectors(startPos, targetPos, 1 - Math.pow(1 - p, 3));
+                    controls.target.set(0, 2, 0);
+                    if (p < 1) requestAnimationFrame(move); else resolve();
+                }
+                move();
+            });
+
+            statusText.textContent = `Complete! ${successCount}/${REGIONS.length} regions fit. Merry Christmas!`;
+            statusText.className = 'status-text success';
+
+            await sleep(2000);
+            isAnimating = false;
+            startBtn.classList.remove('hidden');
+        }
+
+        startBtn.addEventListener('click', () => { if (!isAnimating) startAnimation(); });
+
+        // ==================== RENDER LOOP ====================
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            const positions = snow.geometry.attributes.position.array;
+            for (let i = 0; i < snowCount; i++) {
+                positions[i * 3 + 1] -= 0.02;
+                if (positions[i * 3 + 1] < 0) positions[i * 3 + 1] = 25;
+                positions[i * 3] += Math.sin(Date.now() * 0.001 + i) * 0.003;
+            }
+            snow.geometry.attributes.position.needsUpdate = true;
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        createElves2D();
+        animate();
+    </script>
+</body>
+</html>
